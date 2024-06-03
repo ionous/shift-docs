@@ -1,3 +1,8 @@
+// -------------------------------------------------------------------------
+// CalDaily: a particular occurrence of a ride on a specific day.
+// represented in the database by the caldaily table.
+// -------------------------------------------------------------------------
+
 const knex = require("../knex");
 const config = require("../config");
 const dt = require("../util/dateTime");
@@ -53,12 +58,6 @@ const methods =  {
     return this._store(changed).then(_ => this);
  },
 
-  // returns a date in YYYY-MM-DD format ( ex. 2006-01-02 )
-  getFormattedDate() {
-    // note: dates are returned by the mysql2 driver as a json Date.
-    return dt.toYMDString( this.eventdate );
-  },
-
   // return an object containing: {
   //   id:   CalDaily primary key.
   //   date: YYYY-MM-DD ( ex. 2006-01-02 )
@@ -69,40 +68,20 @@ const methods =  {
   getStatus() {
     return {
       id : this.pkid.toString(),
-      date : this.getFormattedDate(),
+      date : CalDaily.getFormattedDate(this),
       status : this.eventstatus,
       newsflash : this.newsflash
     };
-  },
-
-  // return a url which provides a view of this particular occurrence.
-  // ex. https://localhost:4443/calendar/event-13662
-  getShareable() {
-    return config.site.url("calendar", `event-${this.pkid}`);
-  },
-
-  // return true if the occurrence has been removed from the calendar; false otherwise.
-  // ( differentiates between explicitly canceled, and no longer scheduled. )
-  isDelisted() {
-    return this.eventstatus == EventStatus.Delisted;
-  },
-
-  // return true if the occurrence has been cancelled or delistd;
-  // false if confirmed.
-  // fix: an isConfirmed() would make more sense.
-  isUnscheduled() {
-    return (this.eventstatus == EventStatus.Cancelled) ||
-           (this.eventstatus == EventStatus.Delisted);
   },
 
   // return a summary of this occurrence for the "events" endpoint.
   // backcompat: include the endtime if specified.
   getJSON(endtime) {
     let data = {
-      date: this.getFormattedDate(),
+      date: CalDaily.getFormattedDate(this),
       caldaily_id: this.pkid.toString(),
-      shareable: this.getShareable(),
-      cancelled: this.isUnscheduled(),
+      shareable: CalDaily.getShareable(this),
+      cancelled: CalDaily.isUnscheduled(this),
       newsflash: this.newsflash,
     };
     // see notes in CalEvent.getJSON()
@@ -113,13 +92,54 @@ const methods =  {
   }
 };
 
+// turn a json object into something that seems like a class with methods.
 function addMethods(res) {
   return Object.assign(res, methods);
 }
 
+
+// -------------------------------------------------------------------------
 class CalDaily {
+
+  // return a url which provides a view of this particular occurrence.
+  // ex. https://localhost:4443/calendar/event-13662
+  static getShareable(dayData) {
+    return config.site.url("calendar", `event-${dayData.pkid}`);
+  }
+
+  // return true if the occurrence has been removed from the calendar; false otherwise.
+  // ( differentiates between explicitly canceled, and no longer scheduled. )
+  static isDelisted(dayData) {
+    return dayData.eventstatus == EventStatus.Delisted;
+  }
+
+  // return true if the occurrence has been cancelled or delistd;
+  // false if confirmed.
+  // fix: an isConfirmed() would make more sense.
+  static isUnscheduled(dayData) {
+    return (dayData.eventstatus == EventStatus.Cancelled) ||
+           (dayData.eventstatus == EventStatus.Delisted);
+  }
+
+  // returns a date in YYYY-MM-DD format ( ex. 2006-01-02 )
+  static getFormattedDate(dayData) {
+    // note: dates are returned by the mysql2 driver as a json Date.
+    return dt.toYMDString( dayData.eventdate );
+  }
+
+  // json data for the "manage" and "retrieve" endpoints.
+  static getStatus(dayData) {
+    return methods.getStatus.apply(dayData);
+  }
+
+  // json data for the "events" endpoins.
+  static getSummary(dayData) {
+    return methods.getJSON.apply(dayData);
+  }
+
   // promise a new occurrence of an existing event in the database.
   // dateStatus['date'] is YYYY-MM-DD
+  // the returned object has all of the functions in "methods".
   static createNewEventDaily(evt, dateStatus) {
     if (!evt || !evt.id) {
       throw new Error("daily requires a valid event id");
@@ -153,10 +173,12 @@ class CalDaily {
       });
   }
 
+  // deprecated: prefer summarize.oneDaily.
   // promises one CalDaily but only for published Events.
   // yields null if not found or not published.
   // ( this is the php EventTime::getByID )
-  static getByDailyID(pkid) {
+  static getByDailyID(pkid, customSummaryFunction=null) {
+    const sum = customSummaryFunction || addMethods;
     return knex
       .query('caldaily')
       .join('calevent', 'caldaily.id', 'calevent.id') // join for hidden test.
@@ -165,7 +187,7 @@ class CalDaily {
       .whereNot('eventstatus', EventStatus.Delisted)
       .first()
       .then(function(at) {
-        return at? addMethods(at): null;
+        return at? sum(at): null;
       });
   }
 
@@ -186,7 +208,7 @@ class CalDaily {
     return CalDaily.getByEventID(id).then((dailies) => {
       // fix: rather than filtering here, add a filter to getByEventId
       // trying to keep it somewhat like the php right now.
-      return dailies.filter(at=> !at.isDelisted()).map(at => at.getStatus());
+      return dailies.filter(at=> !CalDaily.isDelisted(at)).map(at => at.getStatus());
     });
   }
 
@@ -238,7 +260,7 @@ class CalDaily {
       const skips = [];    // promises we wait on, but dont return.
       dailies.forEach((at)=> {
         // the map is keyed by date string:
-        const date = at.getFormattedDate();
+        const date = CalDaily.getFormattedDate(at);
         const status = statusMap.get(date);
         // if our event time is still desired by the organizer:
         // update the status with whatever the organizer provided.

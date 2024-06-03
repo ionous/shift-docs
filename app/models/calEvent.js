@@ -1,3 +1,8 @@
+// -------------------------------------------------------------------------
+// CalEvent: a ride which might occur on multiple days.
+// represented in the database by the calevent table.
+// -------------------------------------------------------------------------
+
 const crypto = require("crypto");
 const knex = require("../knex");
 const { CalDaily } = require("./calDaily");
@@ -5,9 +10,10 @@ const { Review } = require("./calConst");
 const dt = require("../util/dateTime");
 const config = require("../config");
 
+// -------------------------------------------------------------------------
 // helper to add methods to a returned database object.
+// -------------------------------------------------------------------------
 const methods =  {
-
   // aka Event::toArray in php
   getJSON({includePrivate}= {}) {
     let duration = this.eventduration;
@@ -42,7 +48,7 @@ const methods =  {
       // and not doing it here can only affect legacy events
       // which havent been viewed in recent years...
       // and that seems okay.
-      image       : config.image.url(this.image),
+      image       : CalEvent.getImageUrl(this),
       audience    : this.audience,
       tinytitle   : this.tinytitle,
       printdescr  : this.printdescr,
@@ -53,7 +59,7 @@ const methods =  {
       printphone  : !!this.printphone,   // false if never set ( null )
       printweburl : !!this.printweburl,  // false if never set ( null )
       printcontact: !!this.printcontact, // false if never set ( null )
-      published   : this.isPublished(),
+      published   : CalEvent.isPublished(this),
       safetyplan  : !!this.safetyplan,   // false if never set ( null )
       // note: (null==0) is false, so this wont include email, etc. by default.
       email: (this.hideemail == 0 || includePrivate) ? this.email : null,
@@ -76,37 +82,6 @@ const methods =  {
     // fix: add a default to mysql? could there be db entries with null in there already
     // and why is this happening in "updateFromJSON"?
     this.highlight = this.highlight ?? 0;
-  },
-
-  // return the starting time as a dayjs object;
-  // ( returns an !isValid object for an invalid time )
-  // pass an optional dayjs day to compute the time relative to a specific date.
-  getStartTime(fromDay = null) {
-    const t = dt.from24HourString(this.eventtime);
-    return fromDay ? dt.combineDateAndTime(fromDay, t) : t;
-  },
-
-  // return the ending time as a dayjs object; or null.
-  // pass an optional dayjs day to compute the time relative to a specific date.
-  // FIX? just like the php version, if the duration is null the end time is null.
-  // this seems wrong to me -- it should probably use the minimum 1 hour duration.
-  getEndTime(fromDay = null) {
-    let endTime = null;
-    const len = this.eventduration;
-    if (len > 0) {
-      const start = this.getStartTime(fromDay);
-      if (start.isValid()) {
-        endTime = start.add(len, 'minute');
-      }
-    }
-    return endTime;
-  },
-
-  // assumes start is a valid dayjs object.
-  // generates a 1 hour duration if none was specified.
-  addDuration(start) {
-    const len = this.eventduration;
-    return endTime = (len > 0) ? start.add(len, 'minute') : start.add(1, 'hour');
   },
 
   // remove this record and any associated caldaily(s) from the database.
@@ -161,9 +136,7 @@ const methods =  {
 
   // can people looking for rides see this event?
   isPublished() {
-    // note: legacy events have null for the hidden field
-    // zero and null are considered published.
-    return !this.hidden;
+    return CalEvent.isPublished(this);
   },
 
   // make this event visible to all
@@ -194,11 +167,73 @@ const methods =  {
   }
 };
 
+// turn a json object into something that seems like a class with methods.
 function addMethods(res) {
   return Object.assign(res, methods);
 }
 
+
+// -------------------------------------------------------------------------
 class CalEvent {
+
+  static isPublished(evtData) {
+    // note: legacy events have null for the hidden field
+    // zero and null are considered published.
+    return !evtData.hidden;
+  }
+
+  static getImageUrl(evtData) {
+    return config.image.url(evtData.image);
+  }
+
+  // return the starting time as a dayjs object;
+  // ( returns an !isValid object for an invalid time )
+  // pass an optional dayjs day to compute the time relative to a specific date.
+  static getStartTime(evtData, fromDay = null) {
+    const t = dt.from24HourString(evtData.eventtime);
+    return fromDay ? dt.combineDateAndTime(fromDay, t) : t;
+  }
+
+  // return the ending time as a dayjs object; or null.
+  // pass an optional dayjs day to compute the time relative to a specific date.
+  // FIX? just like the php version, if the duration is null the end time is null.
+  // this seems wrong to me -- it should probably use the minimum 1 hour duration.
+  static getEndTime(evtData, fromDay = null) {
+    let endTime = null;
+    const len = evtData.eventduration;
+    if (len > 0) {
+      const start = CalEvent.getStartTime(evtData, fromDay);
+      if (start.isValid()) {
+        endTime = start.add(len, 'minute');
+      }
+    }
+    return endTime;
+  }
+
+  // return start and end times on a specific day.
+  // ensures a 1 hour duration if none was specified.
+  static getStartEnd(evtData, fromDay) {
+    let start = CalEvent.getStartTime(evtData, fromDay);
+    if (!start.isValid()) {
+      // provide a fallback if the start time was invalid
+      // this happens with test data, i suspect its not a production issue.
+      start = dt.combineDateAndTime(fromDay, dt.from12HourString("12:00 PM"));
+    }
+    const duration = evtData.eventduration;
+    const end = (duration > 0) ? start.add(duration, 'minute') : start.add(1, 'hour');
+    return {
+      start,
+      end
+    }
+  }
+
+  //
+  static getSummary(evtData, options= {}) {
+    // todo: move the contents of getJson here, and have the method call this.
+    // this uses apply to make make the git diff easier on the eyes.
+    return methods.getJSON.apply(evtData, [options]);
+  }
+
   // promises one CalEvent ( null if not found. )
   // tbd: could also fail on not found, but the code seems to read better this way.
   static getByID(id) {
@@ -207,6 +242,7 @@ class CalEvent {
         return evt ? addMethods(evt) : null;
       });
   }
+
   // returns one event.
   static newEvent() {
     // uuid4 is 36 chars including hyphens 123e4567-e89b-12d3-a456-426614174000

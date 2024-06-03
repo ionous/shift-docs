@@ -10,8 +10,10 @@
  *   https://github.com/shift-org/shift-docs/blob/main/docs/CALENDAR_API.md#crawling-an-event
  */
 const config = require("../config");
-const { CalEvent } = require("../models/calEvent");
 const { CalDaily } = require("../models/calDaily");
+const { CalEvent } = require("../models/calEvent");
+const summarize = require("../models/summarize");
+
 const { to12HourString, from24HourString, friendlyDate } = require("../util/dateTime");
 
 exports.get = function(req, res, next) {
@@ -27,34 +29,33 @@ exports.get = function(req, res, next) {
   if (!id) {
     res.render('crawl.html', p);
   } else {
-    return CalDaily.getByDailyID(id).then((at) => {
-      if (!at) {
+    return summarize.oneDaily(id, customSummary).then(summary => {
+      if (!summary) {
         res.sendStatus(404); // returns not found
       } else {
-        return CalEvent.getByID(at.id).then((evt) => {
-          if (!evt) {
-            res.sendStatus(404); // returns not found
-          } else {
-            res.render('crawl.html',Object.assign(p, {
-              title: evt.title,
-              url: config.site.url("calendar", "event-${at.id}"),
-              image: evt.image || p.image,
-              type: "article", //FIXME: Does FB support 'event' yet?
-              description: evt.desc,
-              address: evt.address,
-              when : {
-                // ex. "Mon, Aug 8th"
-                // if the eventdate is invalid, the value here is 'null'
-                date: friendlyDate( at.eventdate ),
-                // note: the event time is stored as "19:00:00"
-                // and we want to report it as "7:00 PM"
-                // if the eventtime is invalid, the value here is 'null'
-                time: to12HourString( from24HourString(evt.eventtime) ),
-              },
-            }));
-          }
-        });
+        res.render('crawl.html', Object.assign(p, summary));
       }
     }).catch(next);
   }
+}
+
+// expects data from the db that contains both caldaily and calevent data
+function customSummary(evt) {
+  return {
+    title: evt.title,
+    url: CalDaily.getShareable(evt),
+    image: CalEvent.getImageUrl(evt) || config.crawl.image,
+    type: "article", //FIXME: Does FB support 'event' yet?
+    description: evt.descr, // aka. details
+    address: evt.address,
+    when : {
+      // ex. "Mon, Aug 8th"
+      // if the eventdate is invalid, the value here is 'null'
+      date: friendlyDate( evt.eventdate ),
+      // note: the event time is stored as "19:00:00"
+      // and we want to report it as "7:00 PM"
+      // if the eventtime is invalid, the value here is 'null'
+      time: to12HourString( from24HourString(evt.eventtime) ),
+    }
+  };
 }

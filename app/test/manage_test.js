@@ -209,9 +209,9 @@ describe("managing events", () => {
           // three dailies for our event are in the db:
           const dailies = await CalDaily.getByEventID(2);
           expect(dailies).to.have.lengthOf(3);
-          expect(dailies[0].isUnscheduled()).to.be.false;
-          expect(dailies[1].isUnscheduled()).to.be.true;
-          expect(dailies[2].isUnscheduled()).to.be.false;
+          expect(CalDaily.isUnscheduled(dailies[0])).to.be.false;
+          expect(CalDaily.isUnscheduled(dailies[1])).to.be.true;
+          expect(CalDaily.isUnscheduled(dailies[2])).to.be.false;
           // only two should be in the returned data
           // ( the second one is delisted; filtered by reconcile )
           // fix: should add a test for an explicitly canceled day.

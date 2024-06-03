@@ -17,8 +17,9 @@
 const dayjs = require ('dayjs');
 const wordwrap = require('wordwrapjs');
 const nunjucks = require("../nunjucks");
-const { CalEvent } = require("../models/calEvent");
 const { CalDaily } = require("../models/calDaily");
+const { CalEvent } = require("../models/calEvent");
+const summarize = require("../models/summarize");
 const dt = require("../util/dateTime");
 const config = require("../config");
 
@@ -99,12 +100,11 @@ function respondWith(res, filename, events) {
 // Promise all of the occurrences of a single event in ical format as a string.
 // id is a calevent id.
 function buildOne(id) {
-  return CalDaily.getByEventID(id).then((dailies) => {
-    if (!dailies.length) {
-      return Promise.reject("no such events");
-    }
-    return buildEntries(dailies);
-  });
+  return summarize.entireEvent(id,
+      evtDay => buildCalEntry(evtDay, evtDay)).then(events=> {
+        return (events && events.length) ?
+          events: Promise.reject("no such events");
+      });
 }
 
 // Promise some good range of past and future events in ical format as a string.
@@ -112,9 +112,9 @@ function buildCurrent() {
   const now = dt.getNow();
   const started = now.subtract(1, 'month');
   const ended = now.add(3, 'month');
-  return CalDaily.getFullRange(started, ended).then((dailies)=>{
-    return buildEntries(dailies);
-  });
+  // evtDay includes both the event and daily data; so pass it as both parameters.
+  return summarize.fullRange(started, ended,
+      evtDay => buildCalEntry(evtDay, evtDay));
 }
 
 // Promise a range of events in ical format as string,
@@ -129,31 +129,15 @@ function buildRange(start, end) {
     if ((range < 0) || (range > 100)) {
       return Promise.reject("bad date range");
     }
-    return CalDaily.getFullRange(started, ended).then((dailies)=>{
-      return buildEntries(dailies);
-    });
+    // evtDay includes both the event and daily data; so pass it as both parameters.
+    return summarize.fullRange(started, ended,
+        evtDay => buildCalEntry(evtDay, evtDay));
   }
 }
 
 // ---------------------------------
 // ical formatting:
 // ---------------------------------
-
-// promise an array of cal entries, one per daily.
-// see also: getSummaries()
-function buildEntries(dailies) {
-  // a cache because multiple dailies may have the same event.
-  const events = new Map();
-  // generate the array of promises:
-  return Promise.all( dailies.map((at) => {
-    // make a promise for this event ( if we've never see the event before )
-    if (!events.has(at.id)) {
-      events.set(at.id, CalEvent.getByID(at.id));
-    }
-    // promise the entry after the event is available:
-    return events.get(at.id).then(evt => buildCalEntry(evt, at));
-  }));
-}
 
 /**
  * Turn an EventTime record into a single ical v-event.
@@ -163,15 +147,8 @@ function buildEntries(dailies) {
  * @see https://datatracker.ietf.org/doc/html/rfc5545#section-3.6.1
  */
 function buildCalEntry(evt, at) {
-  let startAt = evt.getStartTime(at.eventdate);
-  if (!startAt.isValid()) {
-    // provide a fallback if the start time was invalid
-    // i dont know if this is a real issue, or just test data
-    // php handles this just fine.
-    startAt = dt.combineDateAndTime(at.eventdate, dt.from12HourString("12:00 PM"));
-  }
-  const endAt = evt.addDuration(startAt);
-  const url = at.getShareable();
+  const time = CalEvent.getStartEnd(evt, at.eventdate);
+  const url = CalDaily.getShareable(at);
   return {
     uid: "event-" + at.pkid + "@shift2bikes.org",
     url,
@@ -183,9 +160,12 @@ function buildCalEntry(evt, at) {
       url),
     location: escapeBreak("LOCATION:",
       evt.locname, evt.address, evt.locdetails),
-    status:  at.isUnscheduled() ? "CANCELLED": "CONFIRMED",
-    start: dt.icalFormat( startAt ),
-    end: dt.icalFormat( endAt ),
+    status:  CalDaily.isUnscheduled(at) ? "CANCELLED": "CONFIRMED",
+    start: dt.icalFormat( time.start ),
+    end: dt.icalFormat( time.end ),
+    // hrm... they both have created and modified times.
+    // originally this was CalEvent created time.
+    // but perhaps CalDaily makes more sense.
     created: dt.icalFormat( evt.created ),
     modified: dt.icalFormat( evt.modified ),
     sequence: evt.changes + 1,
