@@ -1,0 +1,253 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://api.shift2bikes.org/schema/events",
+  "title": "Events",
+  "description": "Displays one or more event times. Used for browsing the calendar so people can find information about interesting rides.",
+  "$comment": "https://api.shift2bikes.org/api/events.php?startdate=2024-06-01&enddate=2024-06-12",
+  "type": "object",
+  "properties": {
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "$defs": {
+    "event": {
+      "title": "An event description",
+      "description": "A union of CalDaily and CalEvent data, representing a specific occurrence of an particular event on a given day.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Event ID",
+          "description": "The calevent.id from the database. This may appear multiple times, one for every day of the event.",
+          "type": "string",
+          "$comment": "FIX? should this be an integer instead?"
+        },
+        "title": {
+          "title": "Event name",
+          "type": "string"
+        },
+        "venue": {
+          "title": "Organizer provided name for the start of the event.",
+          "type": "string",
+          "examples": ["Wilshire Park"]
+        },
+        "address": {
+          "title": "Address",
+          "description": "Provide either a street address or cross streets. This should be mappable by online maps such as Google Maps. If you haven't chosen a location yet, enter TBA for now.",
+          "type": "string",
+          "examples": ["NE Skidmore and NE 33rd"]
+        },
+        "organizer": {
+          "title": "Organizer name",
+          "description": "Some name, legal or otherwise, for the event's organizer.",
+          "type": "string",
+          "examples": ["Portland Bike Polo"]
+        },
+        "details": {
+          "title": "Event details",
+          "description": "A large block of text to describe the event.",
+          "type": "string",
+          "$comment": "FUTURE: wouldn't bbcode be cool for bolded text, etc."
+        },
+        "time": {
+          "type": "string",
+          "description": "Organizer provided start time in 24:00:00 format. I believe this is in the local timezone."
+        },
+        "hideemail": {
+          "$comment": "FIX: there's no reason to send this: when true, 'email' is null.",
+          "type": "boolean"
+        },
+        "hidephone": {
+          "$comment": "FIX: there's no reason to send this: when true, 'phone' is null.",
+          "type": "boolean"
+        },
+        "hidecontact": {
+          "$comment": "FIX: there's no reason to send this: when true, 'contact' is null.",
+          "type": "boolean"
+        },
+        "length": {
+          "title": "Ride length",
+          "type": ["string",
+            "null"],
+          "$comment": "FIX: this is always null. Ride length isn't preserved by the server."
+        },
+        "timedetails": {
+          "title": "Time details",
+          "description": "Optional details about your event's time, if needed. Try to keep it short.",
+          "type": ["string",
+            "null"],
+          "examples": ["Meet at 5:00pm, ride at 5:30pm."]
+        },
+        "locdetails": {
+          "title": "Location details",
+          "description": "Optional details about your event's start location, if needed.",
+          "type": ["string",
+            "null"],
+          "examples": ["Meet near the clock tower."]
+        },
+        "loopride": {
+          "title": "Ride is a loop.",
+          "description": "Does the ride end at the same location where it began?",
+          "type": "boolean"
+        },
+        "locend": {
+          "title": "End location details",
+          "description": "Organizer provided description of where the ride ends.",
+          "type": ["string",
+            "null"]
+        },
+        "eventduration": {
+          "title": "Event duration, in minutes",
+          "description": "Help your riders understand the minimum proposed duration of your ride!",
+          "type": ["integer",
+            "null"]
+        },
+        "weburl": {
+          "title": "Organizer Event Page",
+          "description": "Organizer provided website, facebook page, etc. containing additional details.",
+          "type": ["string",
+            "null"]
+        },
+        "webname": {
+          "title": "Organizer Event Page Title",
+          "$comment": "Sometimes people put a url here",
+          "description": "Description of the organizer's webpage.",
+          "type": ["string",
+            "null"]
+        },
+        "image": {
+          "title": "Image URL",
+          "description": "Relative url of an image for this event. The image is always named after the event id, but the extension can vary. The names have a trailing version number which is used to help manage browser caching.",
+          "type": ["string",
+            "null"],
+          "examples": ["/eventimages/11301-6.png"]
+        },
+        "audience": {
+          "description": "One a predefined set of letters indicating the ride's general area. See helpers.js.",
+          "type": "string",
+          "pattern": "^[A-Z]$",
+          "examples": ["G - General",
+            "F - Family Friendly",
+            "A - 21+ Only"]
+        },
+        "tinytitle": {
+          "title": "Printed calendar title",
+          "description": "Title of the event for the print calendar. This is autogenerated if not provided by the organizer.",
+          "type": "string"
+        },
+        "printdescr": {
+          "title": "Printed calendar description",
+          "type": ["string", "null"],
+        },
+        "datestype": {
+          "type": "string",
+          "description": "legacy. always the letter 'O'",
+          "pattern": "^[A-Z]$",
+          "$comment": "FIX: no reason to send this. remove."
+        },
+        "area": {
+          "type": "string",
+          "description": "One a predefined set of letters indicating the ride's general area. See helpers.js.",
+          "pattern": "^[A-Z]$",
+          "examples": [
+            "P - Portland",
+            "V - Vancouver",
+            "W - Westside",
+            "E - East Portland",
+            "C - Clackamas"
+          ]
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Set by the shift crew to highlight certain rides.",
+          "$comment": "FIX? should this be omitted when false?"
+        },
+        "printemail": {
+          "type": "boolean",
+          "description": "Flag to indicate whether the organizer wants their email in the print calendar.",
+          "$comment": "FIX: there's no reason to send this with the events endpoint."
+        },
+        "printphone": {
+          "type": "boolean",
+          "description": "Flag to indicate whether the organizer want their phone in the print calendar.",
+          "$comment": "FIX: there's no reason to send this with the events endpoint."
+        },
+        "printweburl": {
+          "type": "boolean",
+          "description": "Flag to indicate whether the organizer want their email in the print calendar.",
+          "$comment": "FIX: there's no reason to send this with the events endpoint."
+        },
+        "printcontact": {
+          "type": "boolean",
+          "description": "Flag to indicate whether the organizer want the contact field included the print calendar.",
+          "$comment": "FIX: there's no reason to send this with the events endpoint."
+        },
+        "published": {
+          "type": "boolean",
+          "$comment": "FIX: there's no reason to send this with the events endpoint."
+        },
+        "safetyplan": {
+          "title": "COVID safety plan",
+          "description": "This ride follows the COVID safety plan. We need your help to keep bike fun safe for all! If you follow this COVID safety plan, we'll put a special marker next to your ride on the calendar so people know what to expect.",
+          "type": "boolean"
+        },
+        "email": {
+          "description": "The organizer's email.",
+          "type": ["string",
+            "null"],
+          "examples": ["Cloyd_Kreiger@example.com"],
+          "$comment": "FIX: when the organizer wants this info private, we should probably omit the field rather than sending null."
+        },
+        "phone": {
+          "type": ["string",
+            "null"],
+          "$comment": "FIX: when the organizer wants this info private, we should probably omit the field rather than sending null."
+        },
+        "contact": {
+          "title": "Additional contact information.",
+          "description": "This can be a name, an email address, another web URL, social media link, PO Box, or anything else!",
+          "type": ["string",
+            "null"],
+          "$comment": "FIX: when the organizer wants this info private, we should probably omit the field rather than sending null."
+        },
+        "date": {
+          "title": "Day of an occurrence of the event.",
+          "description": "YYYY-MM-DD formatted day of the event.",
+          "type": "string"
+        },
+        "caldaily_id": {
+          "description": "The 'pkid' from the caldaily db.",
+          "type": "string",
+          "$comment": "FIX? should this be an integer instead?"
+        },
+        "shareable": {
+          "description": "A server generated url which provides a view of this particular occurrence.",
+          "type": "string",
+          "examples": ["https://shift2bikes.org/calendar/event-18690"]
+        },
+        "cancelled": {
+          "description": "Has the organizer cancelled this particular occurrence on a particular day",
+          "type": "boolean",
+          "$comment": "FIX? should this be omitted when false?"
+        },
+        "newsflash": {
+          "description": "Some optional text associated with a particular occurrence of the event.",
+          "type": ["string",
+            "null"],
+          "examples": ["Seeking co-leader & planners"]
+        },
+        "endtime": {
+          "title": "Ride end time",
+          "description": "Server calculated time in 24:00:00 local time. Valid whenever the the eventduration is valid.",
+          "type": ["string",
+            "null"],
+          "$comment": "FIX? can't client calculate this?",
+          "examples": ["18:00:00"]
+        }
+      }
+    }
+  }
+}
