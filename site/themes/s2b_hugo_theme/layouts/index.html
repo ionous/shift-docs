@@ -3,6 +3,9 @@
 
 <head>
   {{ partial "head.html" . }}
+  {{/* owl carousel; only load on homepage */}}
+  <link href="{{ .Site.BaseURL }}css/owl.carousel.css" rel="stylesheet">
+  <link href="{{ .Site.BaseURL }}css/owl.theme.css" rel="stylesheet">
   {{ partial "cal/head.html" . }}
 </head>
 
@@ -39,6 +42,8 @@
   <!-- /#all -->
 
   {{ partial "scripts.html" . }}
+  {{/* owl carousel; only load on homepage */}}
+  <script src="{{ .Site.BaseURL }}js/owl.carousel.min.js"></script>
 
 </body>
 
