@@ -1,5 +1,10 @@
+{{/*
+  parameters:
+    - dict with external=true to open in new window.
+    - empty dict, or no parameters at all to stay in same window.
+*/}}
 <div id="alert-banner" class="promo-banner">
   <div>
-    <p>Support your community — see how you can <a href="/pages/public-health/"{{ if (eq .Type "caledit") }} target="_blank" title="opens in a new window"{{ end }}> help make bike fun safe for all</a>.</p>
+    <p>Support your community —&nbsp;see how you can <a href="/pages/public-health/"{{ if .external }} target="_blank" title="opens in a new window"{{ end }}> help make bike fun safe for all</a>.</p>
   </div>
 </div>
