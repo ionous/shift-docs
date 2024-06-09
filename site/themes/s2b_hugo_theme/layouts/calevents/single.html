@@ -76,12 +76,30 @@
   </div>
   <!-- /#all -->
 
-  {{ partial "scripts.html" . }}
+  {{ partial "scripts.html" . }}{{/* for jquery */}}
   {{ partial "cal/events.html" . }}
-
+  {{ partial "cal/scripts.html" . }}{{/* for parseURL() */}}
   <script type="text/javascript">
-    window.cal_renderpage = "{{ .Params.id }}";
-    // TODO
+    $(document).ready(function() {
+      const params = parseURL();
+      if ('eventId' in params) {
+        // view single event
+        // ex. https://shift2bikes.org/calendar/event-2112
+        viewEvent(params['eventId']); // in main.js, included by events.html
+      } else {
+        // view list of events
+        // ex. https://shift2bikes.org/calendar/
+        // note pp is 'true' for:
+        // - site/content/pedalpalooza-calendar.md ( during some parts of the year )
+        // - site/content/archive/pedalpalooza/pedalpalooza-2005.md ( in perpetuity )
+        if ({{ .Param "pp" }}) {
+          params["pp"] = {{ .Param "pp" }};
+          params["startdate"] = {{ .Param "startdate" }};
+          params["enddate"] = {{ .Param "enddate" }};
+        }
+        viewEvents(params); // in main.js, included by events.html
+      }
+    });
   </script>
 
 </body>

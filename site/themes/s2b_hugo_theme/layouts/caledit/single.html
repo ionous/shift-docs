@@ -54,11 +54,17 @@
   </div>
   <!-- /#all -->
 
-  {{ partial "scripts.html" . }}
+  {{ partial "scripts.html" . }}{{/* for jquery */}}
+  {{ partial "cal/events.html" . }}
   {{ partial "cal/edit.html" . }}
-
+  {{ partial "cal/scripts.html" . }}{{/* for parseURL() */}}
   <script type="text/javascript">
-    window.cal_renderpage = "{{ .Params.id }}";
+    $(document).ready(function() {
+      // if editId and secret are blank, this presents the "new event" form.
+      // main.js included by events.html, calls adddevent.js getAddEventForm()
+      const params = parseURL();
+      viewAddEventForm(params.editId, params.editSecret);
+    });
   </script>
 
 </body>

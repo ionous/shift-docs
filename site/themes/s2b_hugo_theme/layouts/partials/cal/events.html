@@ -1,14 +1,18 @@
+{{/*
+  included by the caledit and calevents layout
+*/}}
 <script src="{{ .Site.BaseURL }}js/cal/helpers.js"></script>
 <script src="{{ .Site.BaseURL }}js/cal/main.js"></script>
-
 <script src="{{ .Site.BaseURL }}js/libs/mustache/mustache.min.js"></script>
-
 <script src="{{ .Site.BaseURL }}js/libs/dayjs/dayjs.min.js"></script>
 <script src="{{ .Site.BaseURL }}js/libs/dayjs/plugin/utc.js"></script>
 <script src="{{ .Site.BaseURL }}js/libs/dayjs/plugin/customParseFormat.js"></script>
-<script>
+
+<script  type="text/javascript">
   dayjs.extend(window.dayjs_plugin_utc)
   dayjs.extend(window.dayjs_plugin_customParseFormat)
+  // Mustache delimiter changing: https://stackoverflow.com/questions/13944623/escape-double-braces-in-mustache-template-templating-a-template-in-n
+  Mustache.tags = ["[[", "]]"];
 </script>
 
 <script src="{{ .Site.BaseURL }}js/libs/fullcalendar/core/main.min.js"></script>
@@ -82,41 +86,6 @@
     });
 
   }
-</script>
-
-{{ partial "cal/scripts.html" . }}
-
-<script type="text/javascript">
-  //Mustache delimiter changing: https://stackoverflow.com/questions/13944623/escape-double-braces-in-mustache-template-templating-a-template-in-n
-  Mustache.tags = ["[[", "]]"];
-
-  $(document).ready(function() {
-    var params = parseURL();
-
-    if ('eventId' in params) {
-      // view single event
-      viewEvent(params['eventId']);
-
-    } else if ('editId' in params) {
-      // edit specific event
-      var eventid = params["editId"];
-      var secret = params["editSecret"];
-      viewAddEventForm(eventid, secret);
-
-    } else if (window.cal_renderpage == "addevent") {
-      // show blank form to add new event
-      viewAddEventForm();
-    } else {
-      // view list of events
-      if ({{ .Param "pp" }}) {
-        params["pp"] = {{ .Param "pp" }};
-        params["startdate"] = {{ .Param "startdate" }};
-        params["enddate"] = {{ .Param "enddate" }};
-      }
-
-      viewEvents(params);
-    }
-  });
 </script>
 
 {{ partial "cal/icons.html" . }}

@@ -1,8 +1,11 @@
-{{ partial "cal/events.html" . }}
-
+{{/*
+  included by the caledit layout ( the addevent.md page )
+  ex. https://www.shift2bikes.org/addevent/
+  and https://www.shift2bikes.org/addevent/edit-2112-supersecret
+*/}}
 <script src="{{ .Site.BaseURL }}js/cal/addevent.js"></script>
 <script src="{{ .Site.BaseURL }}js/cal/datepicker.js"></script>
-
+{{/* interacts with user to help fix simple email entry errors: someone@gnail.con */}}
 <script src="//cdnjs.cloudflare.com/ajax/libs/mailcheck/1.1.2/mailcheck.min.js"></script>
 
 <div class="modal fade" tabindex="-1" id="cancel-modal" role="dialog">

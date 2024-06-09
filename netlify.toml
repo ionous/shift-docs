@@ -133,11 +133,15 @@
   to = "/pages/pedalpalooza"
   status = 301
   
-# remove-add trailing slashes kinda?  fool can't really believe this works :P
+# remap all edit urls to the edit page:
+# ie. "https://www.shift2bikes.org/addevent/edit-2112-supersecret" loads "/site/content/addevent.md"
 [[redirects]]
   from = "/addevent/*"
   to = "/addevent"
   status = 200
+
+# remap event urls to the calendar page:
+# ie. "https://www.shift2bikes.org/calendar/event-2112" loads "/site/content/calendar.md"
 [[redirects]]
   from = "/calendar/*"
   to = "/calendar"
