@@ -28,10 +28,6 @@
 
                 <div>
                   {{ .Content }}
-
-                  {{ if isset .Params "pp" }}
-                    {{ partial "cal/pp-header.html" . }}
-                  {{ end }}
                 </div>
 
                 <div id="mustache-html" class="container"></div>
