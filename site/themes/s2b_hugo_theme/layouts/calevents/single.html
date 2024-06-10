@@ -92,10 +92,10 @@
         // note pp is 'true' for:
         // - site/content/pedalpalooza-calendar.md ( during some parts of the year )
         // - site/content/archive/pedalpalooza/pedalpalooza-2005.md ( in perpetuity )
-        if ({{ .Param "pp" }}) {
-          params["pp"] = {{ .Param "pp" }};
-          params["startdate"] = {{ .Param "startdate" }};
-          params["enddate"] = {{ .Param "enddate" }};
+        if ({{ .Params.pp }}) {
+          params.pp = true;
+          params.startdate = {{ .Params.startdate }};
+          params.enddate = {{ .Params.enddate }};
         }
         viewEvents(params); // in main.js, included by events.html
       }
