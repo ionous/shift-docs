@@ -3,7 +3,7 @@
 
 <head>
   {{ partial "head.html" . }}
-  {{ partial "cal/head.html" . }}
+  {{ partial "cal/head.html" ( dict "grid" true "list" true ) }}
 </head>
 
 <body>

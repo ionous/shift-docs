@@ -6,7 +6,11 @@
   {{/* owl carousel; only load on homepage */}}
   <link href="{{ .Site.BaseURL }}css/owl.carousel.css" rel="stylesheet">
   <link href="{{ .Site.BaseURL }}css/owl.theme.css" rel="stylesheet">
-  {{ partial "cal/head.html" . }}
+  {{/*
+      note: the list on the main page is the fullcalendar.io list;
+      not the custom shift event list.
+  */}}
+  {{ partial "cal/head.html" ( dict "list" true ) }}
 </head>
 
 <body>
