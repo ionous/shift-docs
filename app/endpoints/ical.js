@@ -129,6 +129,9 @@ function respondWith(cal, res, filename, events) {
   // according to  https://en.wikipedia.org/wiki/ICalendar
   // its default utf8, and mime type should be used for anything different.
   res.setHeader(config.api.header, config.api.version);
+  
+  // no filename, or the filename 'none' is a helper which returns the feed in plain text
+  // that allows it to display in the browser without generating a downloaded file.
   if (!filename || filename === "none") {
     res.setHeader('content-type', `text/plain`);
   } else {

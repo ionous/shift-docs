@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const knex = require("../knex");
+const db = require("../knex");
 const { CalDaily } = require("./calDaily");
 const { Review } = require("./calConst");
 const dt = require("../util/dateTime");
@@ -9,7 +9,7 @@ const CalEvent = {
   // store to the db if force is true.
   // promises this object when done.
   _store(evt, force= true) {
-    return force ? knex.store('calevent', 'id', evt) : Promise.resolve(evt);
+    return force ? db.store('calevent', 'id', evt) : Promise.resolve(evt);
   },
 
   // aka Event::toArray in php
@@ -100,7 +100,6 @@ const CalEvent = {
   },
 
   // return the ending time as a dayjs object; or null.
-  // pass an optional dayjs day to compute the time relative to a specific date.
   // FIX? just like the php version, if the duration is null the end time is null.
   // this seems wrong to me -- it should probably use the minimum 1 hour duration.
   getEndTime(evt, fromDay = null) {
@@ -126,8 +125,8 @@ const CalEvent = {
   // promises the total number of erased items when done.
   // NOTE: prefer softDelete() so ical subscribers can see that something has changed.
   _eraseEvent(evt) {
-    return knex.del('calevent', 'id', evt).then((acnt) => {
-        return knex.del('caldaily', 'id', evt).then((bcnt) => {
+    return db.del('calevent', 'id', evt).then((acnt) => {
+        return db.del('caldaily', 'id', evt).then((bcnt) => {
           return acnt + bcnt;
         });
     });
@@ -152,10 +151,10 @@ const CalEvent = {
 
   // promise a summary of the CalEvent and all its CalDaily(s)
   // in the php version, the statuses are optional; it's cleaner here to require them.
-  getDetails(evt, statuses, {includePrivate} = {}) {
+  getDetails(evt, statuses, options = {includePrivate: false}) {
     // we either have actual times or promises of them:
     return Promise.resolve(statuses).then((statuses) => {
-      const details = CalEvent.getSummary(evt, {includePrivate});
+      const details = CalEvent.getSummary(evt, options);
       details['datestatuses']= statuses;
       return details;
     });
@@ -204,7 +203,7 @@ const CalEvent = {
   // promises one CalEvent ( null if not found. )
   // tbd: could also fail on not found, but the code seems to read better this way.
   getByID(id) {
-    return knex.query('calevent').where('id', id).first();
+    return db.query('calevent').where('id', id).first();
   },
   
   // returns one event.

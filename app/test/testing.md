@@ -12,6 +12,51 @@ To isolate a single test, `.only` can be placed after a `describe()` or `it()` s
 
 Just don't forget to change things back before checking in!
 
+# Chai 
+
+The unit test framework, chai, supports two styles of tests:
+
+1. promise based, using `return`, `then()`
+2. calling, using `end()`, `done()`
+
+Promises should probably be preferred, but the code does use both ways.
+
+## promises:
+
+```
+  it("tests with promises", function() {
+    return chai.request( app )
+      .get( endpoint )
+      .then(res => {
+        // if failure is expected:
+        // we can assert we're not supposed to be here
+        // chai.assert(false);
+      })
+      .catch(err => {
+        // if success is expected:
+        // we can assert we're not supposed to be here
+        // chai.assert(false); 
+      });
+```
+
+## without promises:
+
+```
+  it("tests without promises", function(done) {
+    chai.request( app )
+      .get( endpoint )
+      .end((err, res) => {
+        // if failure is expected:
+        expect(err).not.to.be.null;
+
+        // if success is expected:
+        expect(err).to.be.null;
+
+        done();
+      });
+```
+
+
 ## Test Data
 
 * "The Tracks of My Tears" with 1 days ( from Thu, 01 Aug 2002 07:00 ) 

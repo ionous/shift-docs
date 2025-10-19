@@ -1,5 +1,5 @@
 // the knex object opens a connection to the db.
-const createKnex = require('knex');
+const knex = require('knex');
 const path = require('path'); // for sqlite 3
 const pickBy = require('lodash/pickBy'); // a dependency of package knex
 const config = require("./config");
@@ -23,6 +23,8 @@ const shift = {
 const sqliteCfg = {
   client: "sqlite3",
   connection: ":memory:",
+  // output to the root directory to inspect the data.
+  // connection: "../test.db",
   useNullAsDefault: true,
 };
 
@@ -44,20 +46,25 @@ if (!useSqlite && config.db.name.startsWith('sqlite')) {
 
 const dbConfig = Object.freeze( useSqlite ? sqliteCfg : shift );
 
-const knex = {
+const db = {
   // lightly wrap knex with a query function.
-  // ex. knex.query('calevent').....
-  query: createKnex(dbConfig),
+  // ex. db.query('calevent').....
+  query: knex(dbConfig),
 
   // create tables if they dont already exist
   initialize() {
-    return tables.create(knex.query, !useSqlite);
+    return tables.create(db.query, !useSqlite);
   },
 
   // for tests to be able to reset the database.
   recreate() {
-    knex.query = createKnex(dbConfig);
-    return knex.initialize();
+    db.query = knex(dbConfig);
+    return db.initialize();
+  },
+
+  // helper shortcut
+  raw(...args) {
+    return db.query.raw(...args);
   },
 
   // convert a dayjs object to a 'date' column.
@@ -90,7 +97,7 @@ const knex = {
    * this updates *everything*.
    */
   store(table, idField, rec) {
-    const q = knex.query(table);
+    const q = db.query(table);
     // get everything from that isn't a function()
     let cleanData = pickBy(rec, isSafe);
     if (idField in rec) {
@@ -112,10 +119,10 @@ const knex = {
    * where the named field has the value in the passed record.
    */
   del(table, idField, rec) {
-    return knex.query(table).where(idField, rec[idField]).del();
+    return db.query(table).where(idField, rec[idField]).del();
   },
 };
-module.exports = knex;
+module.exports = db;
 
 // ugh. if knex sees a function in an object,
 // it assumes the function generates knex style queries and tries to call them.

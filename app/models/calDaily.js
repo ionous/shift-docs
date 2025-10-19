@@ -1,4 +1,4 @@
-const knex = require("../knex");
+const db = require("../knex");
 const config = require("../config");
 const dt = require("../util/dateTime");
 const { EventStatus, Review, EventSearch } = require("./calConst");
@@ -6,8 +6,8 @@ const { EventStatus, Review, EventSearch } = require("./calConst");
 const CalDaily = {
   // store to the db if force is true.
   // promises this object when done.
-  _store(at, force= true) {
-    return force ? knex.store('caldaily', 'pkid', at) : Promise.resolve(at);
+  _store(at, force = true) {
+    return force ? db.store('caldaily', 'pkid', at) : Promise.resolve(at);
   },
 
   // Remove this record from the db.
@@ -15,7 +15,7 @@ const CalDaily = {
   // WARNING: should really only call this for unpublished events
   // otherwise the ical clients might not see the change in the event.
   eraseOccurrence(at) {
-    return knex.del('caldaily', 'pkid', at);
+    return db.del('caldaily', 'pkid', at);
   },
 
   // Mark the day as having been removed from the calendar, and update the db.
@@ -26,7 +26,7 @@ const CalDaily = {
       at.eventstatus = EventStatus.Delisted;
       changed = true;
     }
-    return CalDaily._store(at, changed).then(_ => at);
+    return CalDaily._store(at, changed);
   },
 
   // store the status and newflash if they changed.
@@ -44,9 +44,8 @@ const CalDaily = {
       at.newsflash = newsFlash;
       changed = true;
     }
-    return CalDaily._store(at, changed).then(_ => at);
+    return CalDaily._store(at, changed);
   },
-
   // return an object containing: {
   //   id:   CalDaily primary key.
   //   date: YYYY-MM-DD ( ex. 2006-01-02 )
@@ -59,7 +58,7 @@ const CalDaily = {
       id : at.pkid.toString(),
       date : dt.toYMDString(at.eventdate),
       status : at.eventstatus,
-      newsflash : at.newsflash
+      newsflash : CalDaily.getSafeNews(at),
     };
   },
 
@@ -82,12 +81,15 @@ const CalDaily = {
     return (at.eventstatus == EventStatus.Cancelled) ||
            (at.eventstatus == EventStatus.Delisted);
   },
-
-  // don't send newsflash when delisted:
-  // it's not scheduled and may be deleted
-  // either way, its not info we want to show.
-  // TBD: maybe clear the newsflash on delisting instead?
+  
+ 
+  // newflash contains text from the user; 
+  // typically for canceled or rescheduled events.
   getSafeNews(at) {
+    // don't send newsflash when delisted:
+    // it's not scheduled and may be deleted
+    // either way, its not info we want to show.
+    // TBD: maybe clear the newsflash on delisting instead?
     return !CalDaily.isDelisted(at) ? at.newsflash : null;
   },
 
@@ -95,12 +97,12 @@ const CalDaily = {
   // backcompat: include the endtime if specified.
   getSummary(at, endtime) {
     let data = {
-      date: dt.toYMDString(at.eventdate),
       caldaily_id: at.pkid.toString(),
+      date: dt.toYMDString(at.eventdate),
+      status: at.eventstatus,
+      newsflash: CalDaily.getSafeNews(at),
       shareable: CalDaily.getShareable(at),
       cancelled: CalDaily.isUnscheduled(at), // better would have been "scheduled:true"
-      newsflash: CalDaily.getSafeNews(at),
-      status: at.eventstatus,
       fullcount: at.fullcount, // Full count of results for pagination
     };
     // see notes in CalEvent.getSummary()
@@ -110,22 +112,20 @@ const CalDaily = {
     return data;
   },
 
+
   // promise a new occurrence of an existing event in the database.
   // dateStatus['date'] is YYYY-MM-DD
-  createNewEventDaily(evt, dateStatus) {
-    if (!evt || !evt.id) {
-      throw new Error("daily requires a valid event id");
-    }
+  createNewEventDaily(seriesId, dateStatus) {
     const eventdate = dt.fromYMDString(dateStatus && dateStatus.date);
     if (!eventdate.isValid()) {
       throw new Error("daily requires a valid YMD string");
     }
     // store the new daily.
     return CalDaily._store({
-      id: evt.id,
+      id: seriesId,
       // for the sake of the sqlite driver, convert to a javascript date manually
       // the mysql driver does this automatically.
-      eventdate:  knex.toDate(eventdate),
+      eventdate:  db.toDate(eventdate),
       // defaults here are mainly to simplify testing
       // in theory, the client always specifies them
       eventstatus: dateStatus.status || EventStatus.Active,
@@ -133,19 +133,14 @@ const CalDaily = {
     });
   },
 
-  // promises one CalDaily from the db only for tests.
-  getForTesting(pkid) {
-    return knex
-      .query('caldaily')
-      .where('pkid', pkid)
-      .first();
-  },
+
+
 
   // promises one CalDaily but only for published Events.
   // yields null if not found or not published.
   // ( this is the php EventTime::getByID )
   getByDailyID(pkid) {
-    return knex
+    return db
       .query('caldaily')
       .join('calevent', 'caldaily.id', 'calevent.id') // join for hidden test.
       .where('pkid', pkid)
@@ -157,7 +152,7 @@ const CalDaily = {
   // promises an array of CalDaily(s).
   // aka. the php buildEventTime('id')
   getByEventID(id) {
-    return knex
+    return db
       .query('caldaily')
       .where('id', id);
   },
@@ -178,19 +173,19 @@ const CalDaily = {
   // including excluded and delisted ones. ( see also: getRangeVisible )
   // Days are datejs objects.
   getFullRange(firstDay, lastDay) {
-    return knex
+    return db
       .query('caldaily')
       .join('calevent', 'caldaily.id', 'calevent.id')
       .whereRaw('not coalesce(hidden, 0)')         // zero when published; null for legacy events.
-      .where('eventdate', '>=', knex.toDate(firstDay))
-      .where('eventdate', '<=', knex.toDate(lastDay))
+      .where('eventdate', '>=', db.toDate(firstDay))
+      .where('eventdate', '<=', db.toDate(lastDay))
       .orderBy('eventdate');
   },
 
   // Promises all occurrences of any scheduled CalDaily within the specified date range.
   // Days are datejs objects.
   getRangeVisible(firstDay, lastDay, includeDeleted=false) {
-   return knex
+   return db
       .query('caldaily')
       .join('calevent', 'caldaily.id', 'calevent.id')
       .whereRaw('not coalesce(hidden, 0)')           // calevent: zero when published; null for legacy events.
@@ -213,8 +208,8 @@ const CalDaily = {
         //  .andWhere('review', Review.Excluded)
       })
       .whereNot('eventstatus', EventStatus.Skipped)  // caldaily: a legacy status code.
-      .where('eventdate', '>=', knex.toDate(firstDay))   // caldaily: instance of the event.
-      .where('eventdate', '<=', knex.toDate(lastDay))
+      .where('eventdate', '>=', db.toDate(firstDay))   // caldaily: instance of the event.
+      .where('eventdate', '<=', db.toDate(lastDay))
       .orderBy('eventdate');
   },
 
@@ -222,8 +217,8 @@ const CalDaily = {
   // Days are datejs objects.
   getEventsBySearch(firstDay, term, limit, offset, searchOldEvents=false) {
     // console.log(query.toSQL().toNative());
-    return knex.query('caldaily')
-        .column(knex.query.raw('*, COUNT(*) OVER() AS fullcount'))  // COUNT OVER is our pagination hack
+    return db.query('caldaily')
+        .column(db.query.raw('*, COUNT(*) OVER() AS fullcount'))  // COUNT OVER is our pagination hack
         .join('calevent', 'caldaily.id', 'calevent.id')
         .whereRaw('not coalesce(hidden, 0)')
         .where(function(q) {
@@ -239,9 +234,9 @@ const CalDaily = {
         .whereNot('eventstatus', EventStatus.Skipped)
         .where(function(q) {
           if (!searchOldEvents) {
-            q.where('eventdate', '>=', knex.toDate(firstDay))  
+            q.where('eventdate', '>=', db.toDate(firstDay))  
             // Removing for testing all future events search
-            // .where('eventdate', '<=', knex.toDate(lastDay)) 
+            // .where('eventdate', '<=', db.toDate(lastDay)) 
           }
         })
         .orderBy('eventdate')
@@ -252,11 +247,11 @@ const CalDaily = {
   // Promises all occurrences of any scheduled CalDaily within the specified date range.
   // Days are datejs objects.
   getEventsCount(startDate, endDate) {
-    const currDate = knex.currentDateString()
-    const query = knex.query('caldaily')
-        .column(knex.query.raw('COUNT(*) as total'))
-        .column(knex.query.raw(`COUNT(CASE WHEN eventdate < ${currDate} THEN 1 END) AS past`))
-        .column(knex.query.raw(`COUNT(CASE WHEN eventdate >= ${currDate} THEN 1 END) AS upcoming`))
+    const currDate = db.currentDateString()
+    const query = db.query('caldaily')
+        .column(db.query.raw('COUNT(*) as total'))
+        .column(db.query.raw(`COUNT(CASE WHEN eventdate < ${currDate} THEN 1 END) AS past`))
+        .column(db.query.raw(`COUNT(CASE WHEN eventdate >= ${currDate} THEN 1 END) AS upcoming`))
         .join('calevent', 'caldaily.id', 'calevent.id')
         .whereRaw('not coalesce(hidden, 0)')
         .where(function(q) {
@@ -266,8 +261,8 @@ const CalDaily = {
           q.whereNot('eventstatus', EventStatus.Cancelled)
         })
         .where(function(q) {
-          q.where('eventdate', '>=', knex.toDate(startDate))
-          q.where('eventdate', '<=', knex.toDate(endDate))
+          q.where('eventdate', '>=', db.toDate(startDate))
+          q.where('eventdate', '<=', db.toDate(endDate))
         }).first();
     // console.log(query.toSQL().toNative());
     return query;
@@ -308,7 +303,7 @@ const CalDaily = {
       });
       // create any (new) days the organizer requested:
       statusMap.forEach((status)=> {
-        const at = CalDaily.createNewEventDaily(evt, status);
+        const at = CalDaily.createNewEventDaily(evt.id, status);
         promises.push( at );
       });
       // wait till any removals are completed

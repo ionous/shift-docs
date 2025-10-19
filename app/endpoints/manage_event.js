@@ -37,18 +37,18 @@ exports.post = [ uploader.makeHandler(), handleRequest ];
  * it should only reject due to things like database or programmer errors.
  */
 function handleRequest(req, res, next) {
-  let input = req.body;
+  let body = req.body;
   // fix? the client uploads form data containing json
   // ( rather than raw json ) because multi-part forms require that.
   // a more rest-like api might use a separate put at some event/image url.
-  if (input && input.json) {
-    input = safeParse(input.json);
+  if (body && body.json) {
+    body = safeParse(body.json);
   }
-  if (!input) {
+  if (!body) {
     return res.textError("invalid request");
   }
   // parse for errors
-  const data = validateEvent(input);
+  const data = validateEvent(body);
   // the client code doesnt allow organizers to upload the image for new events
   // ensuring that's the case here, simplifies the file handling (below)
   if (req.file && !data.id) {
