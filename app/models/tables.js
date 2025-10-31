@@ -42,19 +42,19 @@ module.exports = {
         cb: createWeb,
         drop: true, 
       },
-    }).then(async (knex) => {
-      // await knex.schema.createView('public', (view) => {
-      //   view.columns(['series', 'email', 'phone', 'contact']);
-      //   const q = knex.raw(`
-      //     select series,
-      //            IF(private_email,  null, email),
-      //            IF(private_phone,  null, phone),
-      //            IF(private_contact,null, contact)
-      //     from private
-      //     where (private_email or private_phone or private_contact) 
-      //   `);
-      //   view.as(q);
-      // });
+    }).then(async () => {
+      await knex.schema.createView('public', (view) => {
+        view.columns(['series', 'email', 'phone', 'contact']);
+        const q = knex.raw(`
+          select series,
+                 case when show_email then private_email end as email,
+                 case when show_phone then private_phone end as phone,
+                 case when show_contact then private_contact end as contact
+          from private
+          where (email or phone or contact)
+        `);
+        view.as(q);
+      });
       return knex;
     });
   }
