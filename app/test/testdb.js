@@ -1,4 +1,4 @@
-const { Area, Audience, DatesType, EventStatus, Review } = require("../models/calConst");
+const { Area, Audience, EventStatus, Review } = require("../models/calConst");
 const dt = require("../util/dateTime");
 const loremIpsum = require("lorem-ipsum").loremIpsum;
 const testData = require("./testData");
@@ -107,7 +107,6 @@ function fakeCalEvent(eventId) {
     descr,
     printdescr: descr,
     image: `${eventId}.png`,
-    datestype: DatesType.OneDay,
     eventtime: "19:00:00",
     eventduration: 60,
     timedetails: "time details",

@@ -1,6 +1,6 @@
 const dt = require("../util/dateTime");
 const validator = require('validator');
-const { Area, Audience, DatesType, RideLength } = require("./calConst");
+const { Area, Audience, RideLength } = require("./calConst");
 
 class ErrorCollector {
   constructor() {
@@ -250,7 +250,6 @@ function validateEvent(input) {
     tinytitle: v.mungeTinyTitle(title),
     printdescr: v.nullString('printdescr', 1024),
     dates: v.nullString('datestring'), // string field 'dates' needed for legacy admin calendar
-    datestype: v.optionalChar('datestype', DatesType.OneDay),
     area: v.optionalChar('area', Area.Portland),
     printemail: v.optionalFlag('printemail'),
     printphone: v.optionalFlag('printphone'),

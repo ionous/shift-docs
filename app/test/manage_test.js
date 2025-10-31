@@ -117,7 +117,6 @@ describe("managing events", () => {
       "hideemail", "wants bool",
       "hidephone", 42,
       "loopride", "wants bool",
-      "datestype", "a long string",
       "area", 23,
     ];
     let seq = Promise.resolve(""); // something to kick off the sequences.

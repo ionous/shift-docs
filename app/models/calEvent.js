@@ -46,7 +46,6 @@ const CalEvent = {
       audience    : evt.audience,
       tinytitle   : evt.tinytitle,
       printdescr  : evt.printdescr,
-      datestype   : evt.datestype,
       area        : evt.area,
       featured    : !!evt.highlight,    // false if never set ( null )
       printemail  : !!evt.printemail,   // false if never set ( null )
