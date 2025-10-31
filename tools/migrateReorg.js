@@ -212,16 +212,14 @@ async function addTags(tx, evt) {
     });
   }
 }
-// for Area 'P' return "portland"
+// for Area 'P' return "Portland"
 function reverseLookup(group, value) {
   for (const k in group) {
     if (value === group[k]) {
-      return k.toLowerCase();
+      return k;
     }
   }
 }
-
-
 // ---- helpers
 function getImageData(series, image) {
   // match 123.jpg or 123-456.jpg

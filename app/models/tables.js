@@ -43,6 +43,7 @@ module.exports = {
         drop: true, 
       },
     }).then(async () => {
+      await knex.schema.dropViewIfExists('public');
       await knex.schema.createView('public', (view) => {
         view.columns(['series', 'email', 'phone', 'contact']);
         const q = knex.raw(`
@@ -55,7 +56,11 @@ module.exports = {
         `);
         view.as(q);
       });
-      return knex;
+    }).then(async () => {
+      await knex.schema.dropViewIfExists('oldevent');
+      await knex.schema.createView('oldevent', (view) => {
+        view.as(knex.raw(backwardsView));
+      });
     });
   }
 };
@@ -315,3 +320,78 @@ function setDefaults(column, hasDefaultValue) {
     }
   }
 }
+
+const backwardsView = `
+select 
+  lede.series as id, 
+  title, 
+  star.loc_name as locname,
+  star.loc_address as address,
+  organizer as name,
+  summary as desc,
+  star.loc_time as eventtime,
+  star.time_info as timedetails,
+  star.place_info as locdetails,
+  fini.loc_name as locend,
+
+-----------------
+-- DURATION:
+  -- sqlite treats dates as strings, mysql could probably subtract times directly
+  -- use negative numbers to count from the right side of the string
+  -- most times have two digit numbers; but one event has three. it's 10 days long!
+   (60 * substr(fini.loc_time, -6, -3) + substr(fini.loc_time, -5, 2)) - 
+   (60 * substr(star.loc_time, -6, -3) + substr(star.loc_time, -5, 2)) 
+   as duration,
+
+------------------
+-- WEB:
+  web_link as weburl,
+  web_text as webname,
+
+-----------------
+-- PRINT DATA:
+  print.tiny_title as tinytitle,  -- used on the calendar view
+  print.tiny_summary as printdescr,   -- probably unused
+
+------- 
+-- IMAGE:
+    -- generates a blank image "" instead of null;
+    -- but that should be okay in theory.
+    coalesce(
+      img_override, 
+      -- this won't be evaluated if img_override is true.
+      concat_ws( '.', concat_ws('-', image.series, img_version), img_ext ))  
+    as image,
+
+------------------ 
+-- TAGS:
+  distance.tag_value as ridelength,
+  loop.tag_value as loopride, 
+  coalesce( substring(audience.tag_value,1,1), 'G' ) as audience, 
+  coalesce( substring(area.tag_value,1,1), 'P' ) as area, 
+  featured.tag_value as highlight,
+  safety.tag_value as safetyplan,
+
+-----------------
+-- PUBLIC DATA:
+  email,
+  phone,
+  contact,
+  not email as hideemail,
+  not phone as hidephone,
+  not contact as hidecontact
+    
+from lede 
+  left join public using(series)
+  left join image using(series)
+  left join print using(series)
+  left join web on (lede.series = web.series and web_type = 'url')
+  left join location as star on (lede.series = star.series and star.loc_type='start')
+  left join location as fini on (lede.series = fini.series and fini.loc_type='finish')
+  left join tag as audience on(audience.series = lede.series and audience.tag_name = 'audience')
+  left join tag as distance on(distance.series = lede.series and distance.tag_name = 'distance')
+  left join tag as loop on(loop.series = lede.series and loop.tag_name = 'loop')
+  left join tag as area on(area.series = lede.series and area.tag_name = 'area')
+  left join tag as featured on(featured.series = lede.series and featured.tag_name = 'featured')
+  left join tag as safety on(safety.series = lede.series and safety.tag_name = 'safety')
+`;
