@@ -6,6 +6,7 @@ const dt = require("shift-docs/util/dateTime");
 const path = require('node:path');
 const { Area, Audience, Distance, EventStatus, LocType } = require("shift-docs/models/calConst");
 const { dumpTableStatements } = require("shift-docs/models/tables");
+const { allTables } = require("shift-docs/models/allTables");
 const db = require("shift-docs/db");
 const fs = require("fs");
 const assert = require("node:assert");
@@ -14,26 +15,55 @@ const assert = require("node:assert");
 // caller writes to disk.
 async function migrate() {
   const out = new Output();
+  const tableNames = Object.keys(allTables);
 
-  // tbd: char set?
-  const pairs = dumpTableStatements(db);
-  pairs.forEach((statement, name) => out.addTable(name, statement));
+  const statements = dumpTableStatements(db);
+  tableNames.forEach(name => out.addTable(name));
 
   const events = await readAllData();
   buildData(out, events);
-  console.log(out);
 
-  const outPath = "../services/db";
+  // write migration:
+  const outPath = "../services/db/tmp";
+  const mainFile = path.join(outPath, `reorg.sql`);
 
-  Object.keys(out.tables).forEach(name => {
-    const tableFile = path.join(outPath, `${name}.data`);
-    const rows = out.tables[name].rows;
-    const tableData = rows.join(`\n`);
-    fs.writeFileSync(tableFile, tableData);
+  // use select statements:
+  // INSERT INTO Student (id, name, national_id)
+  // VALUES (1001, 'John Liu', '123345566'),
+  //        (1010, 'Samantha Prabhu', '3217165566');
+  let values = "";
+  tableNames.forEach(name => {
+    const cols = Object.keys(allTables[name]);
+    values += `INSERT INTO ${name} (${cols.join(', ')})\nVALUES\n`;
+    const rows = out.tables[name].rows
+    const data = rows.forEach((row, i) => {
+      if (i > 0) {
+        values += ",\n";
+      }
+      values += "(";
+      const parts = cols.forEach((col, i) => {
+        if (i > 0) {
+          values += ",";
+        }
+        values += formatValue(row[col]);
+      });
+      values += ")";
+    });
   });
 
-  // const tables = els.join("\n");
-  // fs.writeFileSync('./test.sql', tables);
+  const comments = out.comments.map(c => `-- ${c}`).join("\n");
+  const migration = statements.join(';\n') + "\n\n" +
+                    values + "\n\n" +
+                    comments;
+  fs.writeFileSync(mainFile, migration);
+
+  // alt: use data files for "load data"
+  // Object.keys(out.tables).forEach(name => {
+  //   const tableFile = path.join(outPath, `${name}.data`);
+  //   const rows = out.tables[name].rows;
+  //   const tableData = rows.join(`\n`);
+  //   fs.writeFileSync(tableFile, tableData);
+  // });
 }
 
 function buildData(out, events) {
@@ -224,12 +254,12 @@ function tagTable(out, evt) {
     tags.featured = "true";
   }
   for (const key in tags) {
-    const value = tags[key];
-    // console.log(`tag ${evt.id} ${key} ${value}`);
+    const values = tags[key];
+    // console.log(`tag ${evt.id} ${key} ${values}`);
     out.insert('tag', {
       id: evt.id,
-      tag_name: key,
-      tag_value: value,
+      tag_type: key,
+      tag_value: values,
     });
   }
 }
@@ -265,7 +295,7 @@ function getImageData(id, image) {
     const [ _fullstring, name, dashnum, ext ] = match;
     if (isValidExt(ext)) {
       // loose compare b/c regex returns strings; but the series is a number
-      return (name != id) ? 
+      return (name != id) ?
         getImageOverride(image) : {
           ext, // ex. "png"
           num: dashnum ? parseInt(dashnum.slice(1)) : null,
@@ -298,9 +328,8 @@ class Output {
   tables = {};
   comments = [];
 
-  addTable(name, statement) {
+  addTable(name) {
     this.tables[name] = {
-      create: statement,
       rows: [],
     }
   }
@@ -309,8 +338,7 @@ class Output {
     if (!t) {
       throw new Error(`unknown table ${name}`)
     }
-    const row = Object.values(cols).map(Output.formatValue).join("\t");
-    t.rows.push(row);
+    t.rows.push(cols);
   }
   warn(id, msg) {
     this.comments.push(`SKIPPING: event ${id} ${msg}`);
@@ -320,23 +348,28 @@ class Output {
     this.comments.push(`note: event ${id} ${msg}`);
     return msg;
   }
-  // transform a db value into a mysql escaped form
-  // (safe for the text file output)
-  static formatValue(v) {
-    if (v === undefined) {
-      throw new Error('invalid value');
-    }
-    if (v === null) {
-      return "NULL";
-    }
-    if (typeof(v) !== 'string') {
-      return v.toString(); // presumably a number
-    }
-    // surely there are better ways
-    const replaceWhat = [ "\\", "\n", "\t"];
-    const replaceWith = [ "\\\\", "\\n", "\\t"];
-    return replaceWhat.reduce( (val, el, i) => val.replaceAll(el, replaceWith[i]), v);
+}
+
+// transform a db values into a mysql escaped form
+// (safe for the text file output)
+function formatValue(v) {
+  if (v === undefined) {
+    throw new Error('invalid values');
   }
+  if (v === null) {
+    return "NULL";
+  }
+  if (typeof(v) !== 'string') {
+    return v.toString(); // presumably a number
+  }
+  // surely there are better ways
+  // note: both sqlite and mysql support single-quoted string literals
+  // with any single-quotes doubled up to indicate escaped single-quotes.
+  const replaceWhat = ["\r", "\\", "\n", "\t", "'"];
+  const replaceWith = ["", "\\\\", "\\n", "\\t", "''"];
+  const escaped = replaceWhat.reduce( (val, el, i) => val.replaceAll(el, replaceWith[i]), v);
+  // quote the escaped string
+  return `'${escaped}'`
 }
 
 // --------------------
@@ -352,5 +385,3 @@ async function runTool() {
     });
 };
 runTool();
-
-

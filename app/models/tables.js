@@ -1,42 +1,33 @@
-const views = require("./views");
-
-// used to create tables
-const tableStatements = {
-  image: imageTable,
-  location: locationTable,
-  print: printTable,
-  private: privateTable,
-  schedule: scheduleTable,
-  series: seriesTable,
-  tag: tagTable,
-  web: webTable,
-};
-
-// certain tables have extra keys
-// todo: a nicer way to handle this?
-const extraKeys = {
-  location: "loc_type",
-  tag: "tag_type",
-  web: "web_type",
-};
+const allViews = require("./allViews");
+const allTriggers = require("./allTriggers");
+const { allTables, extraKeys } = require("./allTables");
+const TableMaker = require("../util/tableMaker");
 
 // create tables if they dont already exist
-// fix? modified time doesn't work for sqlite
-// ( maybe manually set the time in knex.js store()? )
 module.exports = {
-
   // 'image', 'series', etc.
-  tableNames: Object.keys(tableStatements),
+  tableNames: Object.keys(allTables),
 
-  dumpTableStatements(db) {
-    return dumpTableStatements(db.query, db.config.type === 'mysql');
+  // return a chain of promises
+  createTables(db, options = {drop: false}) {
+    const context = { tables: allTables, views: allViews, triggers: allTriggers };
+    const steps = options.drop ? stages.recreateAll : stages.ensureAll;
+    return steps.reduce((prev, stage) => prev.then(_ => {
+      const ps = stage(db, context);
+      return Promise.all(ps);
+    }), Promise.resolve(true));
   },
 
-  createTables(db, {drop}) {
-    if (!db.config.type) {
-      throw new Error(`missing db type`);
-    }
-    return createAll(db.query, db.config.type === 'mysql', drop)
+  // return an array of sql statements
+  dumpTableStatements(db) {
+    const context = { tables: allTables, views: allViews, triggers: allTriggers };
+    return stages.recreateAll.flatMap(stage => {
+      const ps = stage(db, context);
+      return ps.map(p => {
+        const res = p.toSQL();
+        return res[0].sql;
+      });
+    });
   },
 
   // adds new event data to the db, promising the generated seriesId.
@@ -109,7 +100,6 @@ function isEmptyRow(tableName, rowData) {
   const extraKey = extraKeys[tableName];
   return isEmptyData(rowData, ['id', extraKey]);
 }
-
 // helper for isEmptyRow
 // if the named column isnt in the ignore list,
 // and it has a non-zero value; the row has data.
@@ -119,209 +109,73 @@ function isEmptyData(rowData, ignore = []) {
   return first < 0;
 }
 
-function dumpTableStatements(knex, isMysql, drop) {
-  const tableNames = Object.keys(tableStatements);
-  const pairs = tableNames.map(name => {
-    const q = knex.schema.createTable(name, (table) => {
-      const make = newTableMaker(knex, isMysql, table);
-      const cb = tableStatements[name];
-      cb(make, table);
-    });
-    return [name, q.toSQL()[0].sql];
-  });
-  return new Map(pairs);
-}
-
-async function createAll(knex, isMysql, drop) {
-  const tableNames = Object.keys(tableStatements);
-  const drops = drop ? Promise.all(tableNames.map(n => knex.schema.dropTableIfExists(n)))
-                : Promise.resolve(true);
-  await drops;
-  for (const name of tableNames) {
-    const exists = await knex.schema.hasTable(name);
-    if (!exists) {
-      await knex.schema.createTable(name, (table) => {
-        const make = newTableMaker(knex, isMysql, table);
-        const cb = tableStatements[name];
-        cb(make, table);
-      });
+// returns the promise of a table
+function createTable(db, name, tableDesc) {
+  return db.query.schema.createTable(name, table => {
+    db.config.debug && console.log(`createTable ${name}:`);
+    const tm = new TableMaker(db, table);
+    for (const colName in tableDesc) {
+      const args = [].concat(tableDesc[colName]); // normalize 1 or more arguments into an array of many
+      const method = args.shift();            // pop the first one, the "make.something()" function
+      method.call(tm, colName, ...args);       // call that function with any remaining arguments
     }
-  }
-  // helper function for views:
-  async function makeView(name, raw) {
-    await knex.schema.dropViewIfExists(name);
-    await knex.schema.createView(name, (view) => {
-      return view.as(knex.raw(raw));
-    });
-  }
-  for (const name in views) {
-    await makeView(name, views[name]);
-  }
-  // auto-increments the 'published' column of series
-  // whenever data in series get updated.
-  // the trigger will get dropped whenever the series table is dropped.
-  await knex.schema.raw(`
-    create trigger if not exists increment_published
-    after update on series
-    for each row
-    begin
-      update series
-      set published = old.published + 1
-      where series.id = old.id and old.published is not null;
-    end`);
+  });
+}
+// returns the promise of a new view
+function createView(db, name, raw) {
+  return db.query.schema.createView(name, (view) => {
+    return view.as(db.raw(raw));
+  });
+}
+// holds arrays of staging functions: fn(db, {tables, views, triggers})
+// which must be called in-order, one at a time.
+const stages = {
+  ensureAll: [ensureTables, ensureViews, ensureTriggers],
+  recreateAll: [dropViews, dropTables, createTables, ensureViews,  ensureTriggers]
 }
 
-// make is a tableMaker
-function seriesTable(make) {
-  make.primaryKey('id');
-  make.integer('published'); // a counter of the number of times published
-  make.string('title', {width: 256});
-  make.string('tiny', {width: 50});
-  make.string('organizer', {width: 256});
-  make.string('start_time', {width: 10, required: true});
-  make.integer('ride_duration'); // in minutes
-  make.string('details', {width: 6500}); // there's a few in the 6k range
-  make.createdTime();
-  make.modifiedTime();
+// a staging function: drops all the tables
+// returns an array of promises
+function dropTables(db, {tables}) {
+  db.config.debug && console.log("dropTables...");
+  const names = Object.keys(tables);
+  return names.map(n => db.query.schema.dropTableIfExists(n));
 }
-function imageTable(make) {
-  make.dependentKey('id');
-  make.integer('img_version');  // often null for old data where there is no version number.
-  make.string('img_ext', {width: 8}); // ex. "png" (lowercase, no leading dot)
-  make.string('img_override', {width: 64});
-  // make.string('img_alt', 512); -- future
+// a staging function: drops all known views
+// returns an array of promises
+function dropViews(db, {views}) {
+  db.config.debug && console.log("dropViews...");
+  const names = Object.keys(views);
+  return names.map(n => db.query.schema.dropViewIfExists(n));
 }
-function locationTable(make) {
-  make.dependentKey('id','loc_type');
-  make.string('loc_type', {width: 32, required: true});
-  make.string('place_name', {width: 256});
-  make.string('address', {width: 256});
-  make.string('place_info', {width: 256});
-  make.string('time_info', {width: 256});
+// a staging function: creates tables, errors if they exist
+// returns an array of promises
+function createTables(db, {tables}) {
+  const names = Object.keys(tables);
+  const ps = names.map(n => createTable(db, n, tables[n]));
+  db.config.debug && console.log(`create ${ps.length} tables...`);
+  return ps;
 }
-function printTable(make) {
-  make.dependentKey('id');
-  // make.boolflag('no_print'); -- a way to opt out?
-  make.boolflag('add_email');    // 'add' to help indicate its a boolean
-  make.boolflag('add_phone');    // unlike 'printed_summary' which is text.
-  make.boolflag('add_link');
-  make.boolflag('add_contact');
-  make.string('printed_summary', {width: 812}); // was: printdescr
+// a staging function: ensure the tables exist, skipping if they already do.
+// returns an array of promises
+function ensureTables(db, {tables}) {
+  db.config.debug && console.log("ensureTables...");
+  const names = Object.keys(tables);
+  return names.map(n => db.query.schema.hasTable(n).then(exists => {
+    if (!exists) {
+      return createTable(db, n, tables[n]);
+    }
+  }));
 }
-function privateTable(make) {
-  make.dependentKey('id');
-  make.string('secret', {width: 48});    // passwords are generally 33 chars (32 plus the null terminator. ) max 48 here for ... padding?
-  make.string('private_email', {width: 64});
-  make.string('private_phone', {width: 64}); // some people have a short description here.
-  make.string('private_contact',{width:  256});
-  make.boolflag('show_email');
-  make.boolflag('show_phone');
-  make.boolflag('show_contact');
+// a staging function: ensure the views exist, recreating if they already do.
+// returns an array of promises
+function ensureViews(db, {views}) {
+  db.config.debug && console.log("ensureViews...");
+  return Object.keys(views).map(name => createView(db, name, views[name]));
 }
-function scheduleTable(make) {
-  // unfortunately, for backwards compat, pkid has to be the key
-  // ( otherwise it'd be a dependentKey on id, ymd )
-  make.integer('id', {required: true});
-  make.string('ymd', {width: 12, required: true});
-  // defaults to 0, and can be set to null
-  make.boolflag('is_scheduled', {default: 0, required: false});
-  // FIX! i would love to get rid of the pkid.
-  // and replace it with queries like calendar/:series:/:yyyy-mm-dd:
-  // we can change the web-client, but tbd on the ios bike fun app.
-  make.primaryKey('pkid');
-  // create/modified times for the scheduled days
-  // uses different names than the series to avoid query conflicts
-  make.createdTime('added');
-  make.modifiedTime('changed');
-  make.string('news', {width: 1024});
-  // ideally this would be the primary key:
-  make.uniqueIndex('id', 'ymd');
-}
-function tagTable(make) {
-  make.dependentKey('id','tag_type');
-  make.string('tag_type', {width: 32, required: true});
-  make.string('tag_value', {width: 128, required: true});
-}
-function webTable(make) {
-  make.dependentKey('id','web_type');
-  make.string('web_type', {width: 32, required: true});
-  make.string('web_text', {width: 256});
-  make.string('web_link', {width: 512});
+// a staging function: ensure the triggers exist, recreating if they already do.
+function ensureTriggers(db, {triggers}) {
+  db.config.debug && console.log("ensureTriggers...");
+  return Object.values(triggers).map(t => db.query.schema.raw(t));
 }
 
-// wrapper to provide a simpler version of creating tables.
-function newTableMaker(knex, isMysql, table) {
-  if (isMysql) {
-    table.engine("MyISAM");
-  }
-  return {
-    primaryKey(name) {
-      // knex creates these as unsigned; the original tables were signed
-      // it should be fine; that's a lot of ids.
-      // knex uses this as the primary key if another isn't specified.
-      table.increments(name);
-    },
-    // a column to reference the series
-    // with no compositeKey,
-    //  the series id alone uniquely identifies the row.
-    // with a compositeKey,
-    //  the series id and the named column together uniquely identify the row.
-    dependentKey(id, compositeKey = false) {
-      const column = table.integer(id).notNullable();
-      if (!compositeKey) {
-        column.primary();
-      } else {
-        table.primary([id, compositeKey]);
-      }
-    },
-    uniqueIndex(...columns) {
-      return table.index(columns);
-    },
-    // add a column for row created time
-    createdTime(name = 'created') {
-      table.timestamp(name)
-      .notNullable()
-      .defaultTo(knex.fn.now());
-    },
-    // add a column for row modified time
-    // fix? modified time doesn't work for sqlite;
-    // ( maybe manually set the time in knex.js store()? )
-    modifiedTime(name = 'modified') {
-      const ts= table.timestamp(name).notNullable();
-      if (!isMysql) {
-        ts.defaultTo(knex.fn.now());
-      } else {
-        ts.defaultTo(knex.raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'));
-      }
-    },
-    // a 0/1 flag that defaults to 0
-    boolflag(name, opt = {default: 0, required: true}) {
-      const column = table.tinyint(name, 1);
-      setDefaults(column, opt);
-    },
-    // 4 byte signed value (-2147483648 to 2147483647)
-    integer(name, opt = {default: 0, required: false}) {
-      // note: in the original tables `int(11)` is a *display* size
-      // and its deprecated as of mysql 8.0.17
-      // https://dev.mysql.com/doc/refman/8.0/en/numeric-type-attributes.html
-      const column = table.integer(name);
-      setDefaults(column, opt);
-    },
-    // a string containing no more than {'width'} characters.
-    // not required ( can be null ) by default.
-    string(name, opt) {
-      const column = table.string(name, opt.width);
-      setDefaults(column, opt);
-    },
-  };
-}
-
-// where opt can contain { required: <true/false>, default: <value> }
-function setDefaults(column, opt) {
-  if (opt.default !== undefined) {
-    column.defaultTo(opt.default);
-  }
-  if (opt.required) {
-    column.notNullable();
-  }
-}
