@@ -68,7 +68,6 @@ importMysql().catch(e => {
 // support functions:
 // ----------------------------------------------------------------
 
-
 // ----------------------------------------------------------------
 async function importDump(q, inFile) {
   const file = await fs.promises.open(inFile);
@@ -87,6 +86,7 @@ async function anonymize(q) {
           email: evt.email ? faker.internet.email() : evt.email,
           phone: evt.phone ? faker.phone.number() : evt.phone,
           contact: evt.contact ? faker.person.fullName() : evt.contact,
+          password: evt.password ? faker.string.uuid().replaceAll("-", "") : null,
         })
     });
     return Promise.all(ps);
