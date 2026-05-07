@@ -23,7 +23,7 @@ const seriesEvents = `
 select 
   id, 
   title, 
-  tiny as tinytitle,
+  tiny_title as tinytitle,
   organizer as name,
   details as descr,
   created,
@@ -77,30 +77,28 @@ from
   left join location as fini on (series.id = fini.id and fini.loc_type='finish')
 `;
 
-const printEvents = `
-select 
-  id, 
-  printed_summary as printdescr,
-  coalesce(add_email, 0) as printemail,
-  coalesce(add_phone, 0) as printphone,
-  coalesce(add_link, 0) as printweburl,
-  coalesce(add_contact, 0) as printcontact
-from print 
-`;
-
 // a summary of all events regardless of publication status
-// includes all private info
-// ex. for the retrieve event endpoint
+// NOTE: includes all private data as part of its results.
+// ( ex. for the retrieve event endpoint )
 const privateEvents = `
 select 
   *,
   secret as password,
+
+  -- data fields
   private_email as email,
   private_phone as phone,
   private_contact as contact,
-  not show_email as hideemail,
-  not show_phone as hidephone,
-  not show_contact as hidecontact
+
+  -- visibility settings
+  show_email not in ('public', 'visible') as hideemail,
+  show_phone not in ('public', 'visible') as hidephone,
+  show_contact not in ('public', 'visible') as hidecontact,
+
+  -- printing settings
+  show_email in ('public', 'printable') as printemail,
+  show_phone in ('public', 'printable') as printphone,
+  show_contact in ('public', 'printable') as printcontact
 
 from 
   series_events
@@ -109,18 +107,18 @@ from
   join tag_events using(id) 
   left join daily_events using(id)
   left join image_events using(id)
-  left join print_events using(id)
   left join web_events using(id)
 `;
 
 // a summary of published events 
-// including the public contact info
-// ex. for the event listing endpoint
+// ex. for the event listing endpoint.
+// only includes email, phone, and contact info when "public" or "visible"
+// ( those fields are null when "private" or only "printable" )
 const publicEvents = `
 select *,
-  case when show_email then private_email end as email,
-  case when show_phone then private_phone end as phone,
-  case when show_contact then private_contact end as contact
+  case when show_email in ('public', 'visible') then private_email end as email,
+  case when show_phone in ('public', 'visible') then private_phone end as phone,
+  case when show_contact in ('public', 'visible') then private_contact end as contact
 
 from 
   series_events
@@ -170,7 +168,8 @@ from series
 const webEvents = `
  select id,
   nullif(web_link, '') as weburl,  
-  nullif(web_text, '') as webname 
+  nullif(web_text, '') as webname,
+  printable as printweburl
 from web
 where web_type = 'url'
 `;
@@ -182,7 +181,6 @@ module.exports = {
   loc_events: locEvents,
   ical_feed: icalFeed,
   image_events: imageEvents,
-  print_events: printEvents,
   tag_events: tagEvents,
   raw_events: rawEvents,
   web_events: webEvents,

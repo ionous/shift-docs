@@ -7,10 +7,11 @@ const allTables = {
     id: make.primaryKey,
     published: make.integer, // a counter of the number of times published
     title: [make.string, {width: 256}],
-    tiny: [make.string, {width: 50}],
     organizer: [make.string, {width: 256}],
     start_time: [make.string, {width: 10, required: true}],
     ride_duration: make.integer,  // in minutes
+    tiny_title: [make.string, {width: 50}],
+    summary: [make.string, {width: 812} ], // was: printdescr
     details: [make.string, {width: 6500}], // there's a few in the 6k range
     created: make.createdTime,
     modified: make.modifiedTime,
@@ -30,15 +31,6 @@ const allTables = {
     place_info: [make.string, {width: 256}],
     time_info: [make.string, {width: 256}],
   },
-  print: {
-    id: make.dependentKey,
-    // no_print: boolflag -- a way to opt out?
-    add_email: make.boolflag,  // 'add' to help indicate its a boolean
-    add_phone: make.boolflag,  // unlike 'printed_summary' which is text.
-    add_link: make.boolflag,
-    add_contact: make.boolflag,
-    printed_summary: [make.string, {width: 812} ], // was: printdescr
-  },
   private: {
     id: make.dependentKey,
     // passwords are generally 33 chars (32 plus the null terminator. )
@@ -48,9 +40,10 @@ const allTables = {
     // some people have a short description here in phone
     private_phone: [make.string, {width: 64} ],
     private_contact: [make.string, {width:  256}],
-    show_email: make.boolflag,
-    show_phone: make.boolflag,
-    show_contact: make.boolflag,
+    // one of the calConst.Showable(s)
+    show_email: [make.string, {width:  12}],
+    show_phone: [make.string, {width:  12}],
+    show_contact: [make.string, {width:  12}],
   },
   schedule: {
     // ideally id + ymd would be the primary key
@@ -76,6 +69,7 @@ const allTables = {
     web_type: [make.string, {width: 32, required: true}],
     web_text: [make.string, {width: 256}],
     web_link: [make.string, {width: 512}],
+    printable: make.boolflag,
   },
 };
 

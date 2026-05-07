@@ -4,7 +4,7 @@
  */
 const dt = require("shift-docs/util/dateTime");
 const path = require('node:path');
-const { Area, Audience, Distance, EventStatus, LocType } = require("shift-docs/models/calConst");
+const { Area, Audience, Distance, EventStatus, Showable, LocType } = require("shift-docs/models/calConst");
 const { dumpTableStatements } = require("shift-docs/models/tables");
 const { allTables } = require("shift-docs/models/allTables");
 const db = require("shift-docs/db");
@@ -82,7 +82,6 @@ function buildData(out, events) {
       seriesTable(out, evt);
       imageTable(out, evt);
       locTable(out, evt);
-      printTable(out, evt);
       privateTable(out, evt);
       scheduleTable(out, evt, days)
       tagTable(out, evt);
@@ -129,10 +128,11 @@ function seriesTable(out, evt) {
     id: evt.id,
     published,
     title: evt.title,
-    tiny: eatNone((munged === dbtiny) ? null : dbtiny),
     organizer: evt.name,
     start_time: evt.eventtime,
     ride_duration: evt.eventduration,
+    tiny_title: eatNone((munged === dbtiny) ? null : dbtiny),
+    summary: eatNone(evt.printdescr || null),
     details: evt.descr,
     created: evt.created,
     modified: evt.modified,
@@ -177,30 +177,21 @@ function locTable(out, evt) {
     });
   }
 }
-function printTable(out, evt) {
-  // build the print data
-  const print = {
-    id: evt.id,
-    add_email:    !!evt.printemail,   // false if never set ( null )
-    add_phone:    !!evt.printphone,   // false if never set ( null )
-    add_link:     !!evt.printweburl,  // false if never set ( null )
-    add_contact:  !!evt.printcontact, // false if never set ( null )
-    printed_summary: eatNone(evt.printdescr || null),
-  };
-  if (hasData(print)) {
-    out.insert('print', print);
-  }
-}
 function privateTable(out, evt) {
+  const [showEmail, showPhone, showContact] = ["email", "phone", "contact"].map(field => {
+    const showable = evt[`hide${field}`] === 0; // exactly zero
+    const printable = !!evt[`print${field}`]; // false if never set (ie. null)
+    return Showable.combine(visible, printable);
+  });
   out.insert('private', {
     id: evt.id,
     secret: evt.password || null,
     private_email: evt.email || null,
     private_phone: evt.phone || null,
     private_contact: evt.contact || null,
-    show_email: evt.hideemail === 0,
-    show_phone: evt.hidephone === 0,
-    show_contact: evt.hidecontact === 0,
+    show_email: showEmail.value,
+    show_phone: showPhone.value,
+    show_contact: showContact.value,
   });
 }
 function scheduleTable(out, evt, days) {
@@ -270,6 +261,7 @@ function webTable(out, evt) {
       web_type: 'url',
       web_text: evt.webname || null,
       web_link: evt.weburl,
+      printable: !!evt.printweburl,  // false if never set ( null )
     });
   }
 }

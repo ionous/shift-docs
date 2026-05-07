@@ -3,7 +3,7 @@ const db = require("shift-docs/db");
 const config = require("shift-docs/config");
 const dt = require("shift-docs/util/dateTime");
 const tables = require("shift-docs/models/tables");
-const { Area, Audience, Distance, LocType, TagName, WebType } = require('shift-docs/models/calConst');
+const { Area, Audience, Distance, LocType, Showable, TagName, WebType } = require('shift-docs/models/calConst');
 
 // password shared for all fake events
 const password = "supersecret";
@@ -125,8 +125,8 @@ function makeCalEvent(title) {
   const lastName = faker.person.lastName();
   const organizer = faker.person.fullName({firstName, lastName});
   const email = faker.internet.exampleEmail({firstName, lastName});
-  const hideemail = faker.datatype.boolean(0.75) ? 1: 0;
-  const printInfo = faker.datatype.boolean(0.5) ? 1: 0;
+  const visible = faker.datatype.boolean(0.75) ? 0: 1;
+  const printable = faker.datatype.boolean(0.5) ? 1: 0;
   const phone = faker.phone.number();
   const weburl = faker.datatype.boolean(0.5) ? null:
       faker.internet.url();
@@ -162,6 +162,8 @@ function makeCalEvent(title) {
                      faker.location.streetAddress();
   const ridelength = randomRideLength();
 
+  const show = Showable.combine(visible, printable);
+
   // constants:
   return {
     image: {
@@ -174,6 +176,7 @@ function makeCalEvent(title) {
       organizer,
       start_time: eventtime,
       ride_duration: eventduration,
+      summary: descr,
       details: descr,
     },
     location: [{
@@ -191,16 +194,9 @@ function makeCalEvent(title) {
       private_email: email,
       private_phone: phone,
       private_contact: organizer,
-      show_email: hideemail ? 0 : 1,
-      show_phone: hideemail ? 0 : 1,
-      show_contact: 0,
-    },
-    print: {
-      add_contact: 0,
-      add_email: printInfo,
-      add_link: printInfo,
-      add_phone: printInfo,
-      printed_summary: descr,
+      show_email: show.value,
+      show_phone: show.value,
+      show_contact: Showable.Private.value,
     },
     tag: [
       tag(TagName.Area, area.value),

@@ -1,6 +1,6 @@
 const dt = require("../util/dateTime");
 const validator = require('validator');
-const { Area, Audience, Distance, EventStatus, LocType, TagName, WebType } = require("./calConst");
+const { Area, Audience, Distance, EventStatus, LocType, Showable, TagName, WebType } = require("./calConst");
 
 class ErrorCollector {
   constructor() {
@@ -199,6 +199,16 @@ function makeValidator(input, errors) {
       }
       return validStatus;
     },
+    /**
+     * combines a hide* and print* field into a "showable" enum
+     * returns a calConst.Showable
+     */
+    hidePrintField(field) {
+      const visible = flag(`hide${field}`, false); // validate and reverse the flag
+      const printable = flag(`print${field}`, true);
+      const show = Showable.combine(visible, printable);
+      return show.value;
+    }
   };
 }
 
@@ -211,15 +221,17 @@ function validateEvent(input) {
     v.requireTrue('code_of_conduct', "You must agree to the Code of Conduct");
     v.requireTrue('read_comic', "You must have read the Ride Leading Comic");
   }
+
   const event = {
     // image: ... image data is handled separately (via multi-part form data)
     series: {
       title: v.requireString('title', 'Title missing', 256),
-      tiny: v.nullString('tinytitle', 48), // client caps to 24, but some are longer already
       organizer: v.requireString('organizer', 'Organizer missing'),
-      details: v.requireString('details', 'Details missing', 16*1024),
       start_time: v.requiredTime('time'), // can return something falsy on error.
       ride_duration: v.zeroInt('eventduration') || null,  // client defaults this to "" if not specified.
+      tiny_title: v.nullString('tinytitle', 48), // client caps to 24, but some are longer already
+      summary: v.nullString('printdescr', 1024),
+      details: v.requireString('details', 'Details missing', 16*1024),
     },
     location: [{
       loc_type: LocType.Start,
@@ -236,16 +248,9 @@ function validateEvent(input) {
       private_email: v.requireEmail('email'),
       private_phone: v.nullString('phone'),
       private_contact: v.nullString('contact'),
-      show_email: v.reverseFlag('hideemail'),
-      show_phone: v.reverseFlag('hidephone'),
-      show_contact: v.reverseFlag('hidecontact'),
-    },
-    print: {
-      add_email: v.optionalFlag('printemail'),
-      add_phone: v.optionalFlag('printphone'),
-      add_link: v.optionalFlag('printweburl'),
-      add_contact: v.optionalFlag('printcontact'),
-      printed_summary: v.nullString('printdescr', 1024),
+      show_email: v.hidePrintField('email'),
+      show_phone: v.hidePrintField('phone'),
+      show_contact: v.hidePrintField('contact'),
     },
     tag: [
       tag(TagName.Area, v.parseConst(Area, 'area', true)),
@@ -258,6 +263,7 @@ function validateEvent(input) {
       web_type: WebType.Url,
       web_link: v.nullString('weburl', 512),
       web_text: v.nullString('webname'),
+      printable: v.optionalFlag('printweburl'),
     }],
   };
   const seriesId = v.zeroInt('id');

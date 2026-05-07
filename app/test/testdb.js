@@ -1,4 +1,4 @@
-const { TagName, LocType, WebType } = require("../models/calConst");
+const { TagName, LocType, Showable, WebType } = require("../models/calConst");
 const tables = require("../models/tables");
 const dt = require("../util/dateTime");
 const { faker } = require('@faker-js/faker');
@@ -89,7 +89,8 @@ function fakeCalEvent(eventId) {
       start_time: "19:00:00",
       ride_duration: 60,
       title,
-      tiny: title,
+      tiny_title: title,
+      summary: descr,
       details: descr,
     },
     location: [{
@@ -107,16 +108,9 @@ function fakeCalEvent(eventId) {
       private_email: testData.email,
       private_phone: "555-503-5055",
       private_contact: organizer,
-      show_email: 0,
-      show_phone: 0,
-      show_contact: 0,
-    },
-    print: {
-      add_contact : 1,
-      add_email: 0,
-      add_link: 1,
-      add_phone: 0,
-      printed_summary: descr,
+      show_contact: Showable.Printable.value,
+      show_email: Showable.Private.value,
+      show_phone: Showable.Private.value,
     },
     tag: [
       tag(TagName.LoopRide),
@@ -126,6 +120,7 @@ function fakeCalEvent(eventId) {
       web_type: WebType.Url,
       web_link: contacturl,
       web_text: "example.com",
+      printable: true,
     }],
   }
 }
