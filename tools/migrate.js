@@ -179,7 +179,7 @@ function locTable(out, evt) {
 }
 function privateTable(out, evt) {
   const [showEmail, showPhone, showContact] = ["email", "phone", "contact"].map(field => {
-    const showable = evt[`hide${field}`] === 0; // exactly zero
+    const visible = evt[`hide${field}`] === 0; // exactly zero
     const printable = !!evt[`print${field}`]; // false if never set (ie. null)
     return Showable.combine(visible, printable);
   });
