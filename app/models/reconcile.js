@@ -1,8 +1,8 @@
 /**
  * high level table functions for creating and updating events.
  */
-const crypto = require("crypto");
 const db = require("../db");
+const { newSecret } = require("../util/misc");
 const tables = require("./tables");
 
 module.exports = {
@@ -15,10 +15,7 @@ module.exports = {
 // promises an object containing { seriesId, password }
 // tx can be either 'db.query' or a knex transaction.
 function newEvent(tx, eventData, dayData) {
-  // uuid4 is 36 chars including hyphens 123e4567-e89b-12d3-a456-426614174000
-  // the secret format has been 32 chars no hyphens.
-  const password = crypto.randomUUID().replaceAll("-" , "");
-  eventData.private.secret = password;
+  eventData.private.secret = newSecret();
   return tables.insertEventData(tx, eventData).then(seriesId => {
     return updateDays(tx, seriesId, dayData).then(_ => ({
       seriesId,

@@ -10,6 +10,7 @@ const { allTables } = require("shift-docs/models/allTables");
 const db = require("shift-docs/db");
 const fs = require("fs");
 const assert = require("node:assert");
+const { newSecret } = require("shift-docs/util/misc");
 
 // return map of { tableName: newTable }
 // caller writes to disk.
@@ -21,6 +22,7 @@ async function migrate() {
   tableNames.forEach(name => out.addTable(name));
 
   const events = await readAllData();
+  rewriteExceptions(events);
   buildData(out, events);
 
   // write migration:
@@ -66,18 +68,64 @@ async function migrate() {
   // });
 }
 
+// exceptions were copies of the event data for a particular day.
+// there's only about 50 of them
+// the new db will treat those as completely separate events.
+// the copies of those will be given the password of the original
+// to relate the two events.
+function rewriteExceptions(events) {
+  for (const id in events) {
+    const evt = events[id];
+    evt.allDays.forEach(at => {
+      if (at.eventstatus === 'E') {
+        const og = events[at.id];
+        const cp = events[at.exceptionid];
+        if (!cp) {
+          // there's exactly one exception which doesn't have an event:
+          // 2751 -- maybe the event got deleted?
+          at.eventstatus = 'A';
+        } else {
+          // most of these don't have passwords; not sure why.
+          // (too old?) give them one to be able to relate things.
+          if (!og.password) {
+            og.password = newSecret();
+          }
+          cp.password = og.password;
+          at.id = at.exceptionid;
+          at.eventstatus = 'A';
+        }
+      }
+    });
+  }
+}
+
+// review:
+// "A" means the administrator has approved it for inclusion the the printed Pedalpalooza calendar,
+// "E" means the administrator has decided to exclude it from the printed calendar,
+// "I" means it needs to be inspected,
+// "R" means the event organizer did change it in response to that message.
+//  "S" means a message has been sent to the event organizer asking them to change it,
+
+
 function buildData(out, events) {
   for (const id in events) {
     const evt = events[id];
-    const days = evt.allDays.filter(at => isScheduled(at) !== undefined);
-    if (!days.length) {
-      // raw data files don't allow comments
-      // could generate a migration file with it though
-      out.warn(evt.id, `no had valid days. review:${evt.review} title: "${evt.title}"`);
+    const invalid = evt.allDays.length == 1 && evt.allDays[0].pkid === null;
+    if (invalid) {
+      // TBD: we could keep these i suppose.
+      // a series ith no days.
+      out.note(evt.id, `no had days. review:${evt.review} title: "${evt.title}"`);
     } else {
+      const days = evt.allDays.filter(at => isScheduled(at) !== undefined);
+      const skips = evt.allDays.filter(at => ['S', 'D'].includes(at.eventstatus)).length;
+
       const diff = evt.allDays.length - days.length;
-      if (diff > 0) {
-        out.note(evt.id, `removed ${diff} days`);
+      if (diff > 0 && diff !== skips) {
+      evt.allDays.forEach(at => {
+        console.log(at);
+      });
+       const err = out.warn(evt.id, `REMOVED ${diff} days; ${skips} skipped.`);
+       throw new Error(err);
       }
       seriesTable(out, evt);
       imageTable(out, evt);
@@ -143,6 +191,7 @@ function imageTable(out, evt) {
   if (!!image) {
     const img = getImageData(evt.id, image);
     if (!img) {
+      // there are a few files like "6461." not sure what to think about that.
       out.note(evt.id, `ignored image ${image}`)
     } else {
       out.insert('image', {
@@ -232,7 +281,13 @@ function tagTable(out, evt) {
   if (dist) {
     tags.distance = dist;
   } else if (evt.ridelength) {
-    out.note(evt.id, `unknown ride length ${evt.ridelength}`)
+    // dunno why but series 7283 has a length of "12"
+    // nothing else is like that.
+    if (evt.ridelength == 12) {
+      evt.ridelength = '8-15';
+    } else {
+     out.note(evt.id, `unknown ride length ${evt.ridelength}`);
+    }
   }
   // false zero or null
   if (!!evt.loopride) {
@@ -309,8 +364,14 @@ function isValidExt(ext) {
   const validExts = ['gif', 'png', 'jpg','jpeg','pjpeg', 'pjp', 'jfif'];
   return validExts.includes(ext.toLowerCase());
 }
+
 function isScheduled(at) {
-  // there are legacy values such as 'E', or 'S' which don't display correctly
+  // the complete set of event status are:
+  // A, C, D, E, S. none were null.
+  // we only care about "active" and "cancelled"
+  // exclusions get rewritten into regular events.
+  // we dont need to remember deleted data
+  // skips were an artifact of scheduling.
   return EventStatus.keyToValue(at.eventstatus);
 }
 
@@ -333,7 +394,7 @@ class Output {
     t.rows.push(cols);
   }
   warn(id, msg) {
-    this.comments.push(`SKIPPING: event ${id} ${msg}`);
+    this.comments.push(`WARNING: event ${id} ${msg}`);
     return msg;
   }
   note(id, msg) {

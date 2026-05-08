@@ -2,7 +2,6 @@
 // thin wrapper around knex
 // for configuring and connecting to a database
 //
-
 const knex = require('knex'); // the knex constructor
 const pickBy = require('lodash/pickBy'); // a dependency of package knex
 const config = require("./config");
