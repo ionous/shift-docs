@@ -15,7 +15,8 @@ module.exports = {
 // promises an object containing { seriesId, password }
 // tx can be either 'db.query' or a knex transaction.
 function newEvent(tx, eventData, dayData) {
-  eventData.private.secret = newSecret();
+  const password = newSecret();
+  eventData.private.secret = password;
   return tables.insertEventData(tx, eventData).then(seriesId => {
     return updateDays(tx, seriesId, dayData).then(_ => ({
       seriesId,
