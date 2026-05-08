@@ -9,8 +9,8 @@
  * See also:
  *   https://github.com/shift-org/shift-docs/blob/main/docs/CALENDAR_API.md#crawling-an-event
  */
-const config = require("../config");
-const { to12HourString, from24HourString, friendlyDate } = require("../util/dateTime");
+const config = require('server/config');
+const { to12HourString, from24HourString, friendlyDate } = require('server/util/dateTime');
 const { summarize } = require("../models/summarize");
 
 // TODO: nothing really uses this endpoint; remove?

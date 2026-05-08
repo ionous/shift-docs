@@ -24,9 +24,9 @@
  */
 const { uploader } = require("../uploader");
 const validator = require('validator');
-const config = require("../config");
+const config = require('server/config');
 const db = require("../db");
-const dt = require("../util/dateTime");
+const dt = require('server/util/dateTime');
 const emailer = require("../emailer");
 const nunjucks = require("../nunjucks");
 const Reconcile = require("../models/reconcile")
@@ -75,10 +75,12 @@ function handleRequest(req, res, next) {
       res.set(config.api.header, config.api.version);
       res.json(out);
     }).catch(err => {
-      const logMessage = `manage_event error ${tgt} ${err.message}`;
-      //if (!config.isTesting) {
+      // doesnt log during tests because some tests are expected to fail.
+      if (!config.isTesting) {
+        const json = JSON.stringify(tgt, null, " ");
+        const logMessage = `manage_event error ${json} ${err.message}`;
         console.error(logMessage);
-      // }
+      }
       res.textError("Something went wrong, use the link sent to you in email or contact support");
     });
   }

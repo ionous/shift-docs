@@ -1,5 +1,5 @@
-const config = require("../config");
-const dt = require("../util/dateTime");
+const config = require('server/config');
+const dt = require('server/util/dateTime');
 const { EventStatus } = require("./calConst");
 
 const CalDaily = {

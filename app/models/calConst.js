@@ -2,7 +2,7 @@
 // Common values used by the calendar.
 // see helpers.js for the client version. fix: how can we share?
 //
-const Shorthand = require("../util/shorthand");
+const Shorthand = require('server/util/shorthand');
 
 // example usage:
 // Area.Portland.key = "P" - sent b/t client and server.

@@ -1,7 +1,7 @@
 const { faker } = require('@faker-js/faker');
 const db = require("shift-docs/db");
-const config = require("shift-docs/config");
-const dt = require("shift-docs/util/dateTime");
+const config = require('server/config');
+const dt = require('server/util/dateTime');
 const tables = require("shift-docs/models/tables");
 const { Area, Audience, Distance, LocType, Showable, TagName, WebType } = require('shift-docs/models/calConst');
 

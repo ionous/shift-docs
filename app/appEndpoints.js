@@ -1,6 +1,6 @@
 const express = require('express');
-const config = require("./config");
-const errors = require("./util/errors");
+const config = require('server/config');
+const errors = require('server/util/errors');
 const nunjucks = require("./nunjucks");
 const app = express();
 

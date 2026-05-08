@@ -2,7 +2,7 @@ const fsp = require('fs').promises;
 const path = require('node:path');
 const validator = require('validator');
 const multer = require('multer');
-const config = require("./config");
+const config = require('server/config');
 
 class FileFilterError extends Error {}
 

@@ -14,8 +14,8 @@
  *  See also:
  *  https://github.com/shift-org/shift-docs/blob/main/docs/CALENDAR_API.md#retrieving-public-event-data
  */
-const config = require("../config");
-const dt = require("../util/dateTime");
+const config = require('server/config');
+const dt = require('server/util/dateTime');
 const CalEvent = require("../models/calEvent");
 const CalDaily = require("../models/calDaily");
 const { summarize } = require("../models/summarize");

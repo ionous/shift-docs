@@ -1,7 +1,7 @@
 const allViews = require("./allViews");
 const allTriggers = require("./allTriggers");
 const { allTables, extraKeys } = require("./allTables");
-const TableMaker = require("../util/tableMaker");
+const TableMaker = require('server/util/tableMaker');
 
 // create tables if they dont already exist
 module.exports = {

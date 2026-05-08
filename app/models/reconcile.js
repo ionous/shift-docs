@@ -2,7 +2,7 @@
  * high level table functions for creating and updating events.
  */
 const db = require("../db");
-const { newSecret } = require("../util/misc");
+const { newSecret } = require('server/util/misc');
 const tables = require("./tables");
 
 module.exports = {

@@ -1,4 +1,4 @@
-const TableMaker = require("../util/tableMaker");
+const TableMaker = require('server/util/tableMaker');
 
 // some ugliness to allow declaration of all the table and column names
 const make = TableMaker.prototype;

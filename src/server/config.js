@@ -1,11 +1,10 @@
-// global configuration for the backend
-// holds all environment, commandline options, paths, etc.
-//
-// const config = require('./config');
-//
+/**
+ * Global configuration for the backend.
+ * Holds all environment, commandline options, paths, etc.
+ */
 const path = require('path');
 const fs = require("fs");
-const { CommandLine } = require('./util/cmdLine.js');
+const { CommandLine } = require('server/util/cmdLine.js');
 
 // helper to read environment variables
 function env_default(field, def) {
