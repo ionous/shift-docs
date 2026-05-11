@@ -1,5 +1,5 @@
 const app = require("../appEndpoints");
-const db = require("../db");
+const db = require("server/core/db");
 const testData = require("./testData");
 const testdb = require("./testdb");
 

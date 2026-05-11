@@ -1,4 +1,4 @@
-const config = require('server/config');
+const config = require('server/core/config');
 const dt = require('server/util/dateTime');
 const { EventStatus } = require("./calConst");
 

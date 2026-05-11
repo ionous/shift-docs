@@ -23,7 +23,7 @@ const CalDaily = require("../models/calDaily");
 const { EventsRange } = require("../models/calConst");
 const { summarize } = require("../models/summarize");
 const dt = require('server/util/dateTime');
-const config = require('server/config');
+const config = require('server/core/config');
 
 module.exports = {
 // endpoint export:

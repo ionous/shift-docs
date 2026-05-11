@@ -2,15 +2,17 @@
  * migrate from old tables to new tables
  * ex. npm run -w tools migrate
  */
-const dt = require('server/util/dateTime');
+const fs = require("node:fs");
 const path = require('node:path');
+const assert = require("node:assert");
+const dt = require('server/util/dateTime');
+const { newSecret } = require('server/util/misc');
+
 const { Area, Audience, Distance, EventStatus, Showable, LocType } = require("shift-docs/models/calConst");
 const { dumpTableStatements } = require("shift-docs/models/tables");
 const { allTables } = require("shift-docs/models/allTables");
-const db = require("shift-docs/db");
-const fs = require("fs");
-const assert = require("node:assert");
-const { newSecret } = require('server/util/misc');
+
+const db = require("server/core/db");
 
 // return map of { tableName: newTable }
 // caller writes to disk.

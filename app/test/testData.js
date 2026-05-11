@@ -1,5 +1,5 @@
 const dt = require('server/util/dateTime');
-const config = require('server/config');
+const config = require('server/core/config');
 const assert = require("node:assert/strict");
 
 const secret = "12e1c433836d6c92431ac71f1ff6dd97";

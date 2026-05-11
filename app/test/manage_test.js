@@ -16,7 +16,7 @@ const fsp = fs.promises;
 const path = require('node:path');
 //
 const app = require("../appEndpoints");
-const config = require('server/config');
+const config = require('server/core/config');
 const testdb = require("./testdb");
 const testData = require("./testData");
 //
@@ -28,7 +28,7 @@ const assert = require("node:assert/strict");
 const supertest = require('supertest');
 const sandbox = require('sinon').createSandbox();
 const manage_api = '/api/manage_event.php';
-const db = require('../db');
+const db = require('server/core/db');
 
 describe("managing events",  () => {
   // hangs occur if the http requests throw exceptions;

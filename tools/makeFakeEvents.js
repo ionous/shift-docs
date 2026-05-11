@@ -2,7 +2,7 @@
  * create one or more fake events.
  * ex. npm run -w tools make-fake-events
  */
-const db = require("shift-docs/db");
+const db = require("server/core/db");
 const dt = require('server/util/dateTime');
 const { makeFakeData } = require("shift-docs/test/fakeData");
 

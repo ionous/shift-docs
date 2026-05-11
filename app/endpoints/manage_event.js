@@ -24,8 +24,8 @@
  */
 const { uploader } = require("../uploader");
 const validator = require('validator');
-const config = require('server/config');
-const db = require("../db");
+const config = require('server/core/config');
+const db = require("server/core/db");
 const dt = require('server/util/dateTime');
 const emailer = require("../emailer");
 const nunjucks = require("../nunjucks");
@@ -75,10 +75,11 @@ function handleRequest(req, res, next) {
       res.set(config.api.header, config.api.version);
       res.json(out);
     }).catch(err => {
-      // doesnt log during tests because some tests are expected to fail.
+      // generate the text even during tests so we're testing the code
+      const json = JSON.stringify(tgt, null, " ");
+      const logMessage = `manage_event error ${json} ${err.message}`;
+      // but don't log during tests because some tests are expected to fail.
       if (!config.isTesting) {
-        const json = JSON.stringify(tgt, null, " ");
-        const logMessage = `manage_event error ${json} ${err.message}`;
         console.error(logMessage);
       }
       res.textError("Something went wrong, use the link sent to you in email or contact support");
@@ -164,6 +165,9 @@ function sendConfirmationEmail(id, password, evt) {
   if (!config.isTesting) {
     console.debug(logMessage);
   }
+  //
+  // FIX: have to get andrew's changes here
+  //
   const support= config.email.support;
   const body = nunjucks.render('email.njk', {
     organizer: evt.series.organizer,
@@ -172,6 +176,9 @@ function sendConfirmationEmail(id, password, evt) {
     help: config.site.helpPage(),
     support: support.address || support, // a string or object
   });
+  if (!config.isTesting) {
+    console.debug("confirmation email body:\n", body);
+  }
   return emailer.sendMail({
     subject,
     text: body,
@@ -184,17 +191,5 @@ function sendConfirmationEmail(id, password, evt) {
     bcc: config.email.moderator, // backup copy for debugging and/or moderating
     // html
     // attachments
-  }).then(res => {
-    const logMessage = `Sent email: ` + JSON.stringify({
-      date: dt.getNow().toString(),
-      organizer: evt.series.organizer,
-      email: evt.private.private_email,
-      title: evt.series.title,
-      url: url,
-    }, null, " ");
-    if (!config.isTesting) {
-      console.log(logMessage);
-    }
-    return res;
   });
 }

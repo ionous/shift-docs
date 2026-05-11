@@ -14,10 +14,10 @@
  * returns http 400 "Bad Request" and a json error response (see errors.php)
  *
  */
-const config = require('server/config');
-const db = require("../db");
+const config = require('server/core/config');
+const db = require("server/core/db");
 const express = require('express');
-const textError = require('server/util/errors');
+const textError = require('server/support/errors');
 const Reconcile = require("../models/reconcile")
 const { uploader } = require("../uploader");
 const { safeParse } = require("../models/calEventValidator");

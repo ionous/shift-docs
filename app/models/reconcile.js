@@ -1,7 +1,7 @@
 /**
  * high level table functions for creating and updating events.
  */
-const db = require("../db");
+const db = require("server/core/db");
 const { newSecret } = require('server/util/misc');
 const tables = require("./tables");
 
