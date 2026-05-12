@@ -1,6 +1,6 @@
 const config = require('server/core/config');
+const { EventStatus } = require('server/model/shorthands');
 const dt = require('server/util/dateTime');
-const { EventStatus } = require("./calConst");
 
 const CalDaily = {
   // return a url which provides a view of this particular occurrence.

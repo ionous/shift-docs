@@ -1,6 +1,6 @@
 const dt = require('server/util/dateTime');
 const validator = require('validator');
-const { Area, Audience, Distance, EventStatus, LocType, Showable, TagName, WebType } = require("./calConst");
+const { Area, Audience, Distance, EventStatus, LocType, Showable, TagName, WebType } = require("server/model/shorthands");
 
 class ErrorCollector {
   constructor() {
@@ -145,7 +145,7 @@ function makeValidator(input, errors) {
       }
     },
     // for validating from an object containing shorthand constants
-    // ex. calConst.Area
+    // ex. shorthands.Area
     parseConst(cls, field, required) {
       const value = cls.keyToValue(getString(field));
       if (value !== undefined) {
@@ -201,7 +201,7 @@ function makeValidator(input, errors) {
     },
     /**
      * combines a hide* and print* field into a "showable" enum
-     * returns a calConst.Showable
+     * returns a shorthands.Showable
      */
     hidePrintField(field) {
       const visible = flag(`hide${field}`, false); // validate and reverse the flag

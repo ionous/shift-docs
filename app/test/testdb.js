@@ -1,23 +1,25 @@
-const { TagName, LocType, Showable, WebType } = require("../models/calConst");
-const tables = require("../models/tables");
-const dt = require('server/util/dateTime');
-const { faker } = require('@faker-js/faker');
-const testData = require("./testData");
 const db = require("server/core/db");
+const { TagName, LocType, Showable, WebType } = require("server/model/shorthands");
+const dt = require('server/util/dateTime');
+const { setupTables } = require("server/schema");
+const { faker } = require('@faker-js/faker');
+
+const testData = require("./testData");
+const tables = require("../models/tables");
 const { generateFakeData, insertFakeData } = require("./fakeData");
 
 module.exports = {
   // generates a hand rolled set of data
   setupTestData: async (name) => {
     await db.initialize('setupTestData');
-    await tables.createTables(db, {drop: true});
+    await setupTables(db, {drop: true});
     faker.seed(23204); // uses lorem generator
     await createTestData();
   },
   // uses faker to generate a good amount of fake data
   setupFakeData: async (name) => {
     await db.initialize('setupFakeData');
-    await tables.createTables(db, {drop: true});
+    await setupTables(db, {drop: true});
     const firstDay = dt.fromYMDString("2002-08-01");
     const lastDay  = dt.fromYMDString("2002-08-31");
     const numEvents = 46;

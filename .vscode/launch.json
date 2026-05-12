@@ -24,7 +24,7 @@
                 "run-script",
                 "-w",
                 "tools",
-                "migrate"
+                "sqlite-migrate"
             ],
             "runtimeExecutable": "npm",
             "skipFiles": [

@@ -1,18 +1,18 @@
 /**
  * migrate from old tables to new tables
- * ex. npm run -w tools migrate
+ * ex. npm run -w tools sqlite-migrate
+ * ex. ./shift compose exec node npm run -w tools mysql-migrate
+ *  no such file or directory, open '../services/db/tmp/reorg.sql'
  */
 const fs = require("node:fs");
-const path = require('node:path');
+const path = require("node:path");
 const assert = require("node:assert");
-const dt = require('server/util/dateTime');
-const { newSecret } = require('server/util/misc');
-
-const { Area, Audience, Distance, EventStatus, Showable, LocType } = require("shift-docs/models/calConst");
-const { dumpTableStatements } = require("shift-docs/models/tables");
-const { allTables } = require("shift-docs/models/allTables");
 
 const db = require("server/core/db");
+const { allTables, setupStatements } = require("server/schema");
+const dt = require('server/util/dateTime');
+const { newSecret } = require("server/util/misc");
+const { Area, Audience, Distance, EventStatus, Showable, LocType } = require("server/model/shorthands");
 
 // return map of { tableName: newTable }
 // caller writes to disk.
@@ -20,7 +20,7 @@ async function migrate() {
   const out = new Output();
   const tableNames = Object.keys(allTables);
 
-  const statements = dumpTableStatements(db);
+  const statements = setupStatements(db);
   tableNames.forEach(name => out.addTable(name));
 
   const events = await readAllData();
@@ -28,8 +28,7 @@ async function migrate() {
   buildData(out, events);
 
   // write migration:
-  const outPath = "../services/db/tmp";
-  const mainFile = path.join(outPath, `reorg.sql`);
+  const mainFile = db.config === "sqlite" ? path.join(`../services/db/tmp/reorg.sql`) : "/dev/stdout";
 
   // use select statements:
   // INSERT INTO Student (id, name, national_id)
@@ -53,11 +52,12 @@ async function migrate() {
       });
       values += ")";
     });
+    values += ";\n";
   });
 
   const comments = out.comments.map(c => `-- ${c}`).join("\n");
   const migration = statements.join(';\n') + "\n\n" +
-                    values + "\n\n" +
+                    values + "\n" +
                     comments;
   fs.writeFileSync(mainFile, migration);
 
@@ -413,6 +413,10 @@ function formatValue(v) {
   }
   if (v === null) {
     return "NULL";
+  }
+  if (v instanceof Date) {
+    const timestamp = dt.toTimestamp(v);
+    return `'${timestamp}'`;
   }
   if (typeof(v) !== 'string') {
     return v.toString(); // presumably a number

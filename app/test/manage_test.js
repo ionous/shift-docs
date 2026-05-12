@@ -21,7 +21,7 @@ const testdb = require("./testdb");
 const testData = require("./testData");
 //
 const CalEvent = require("../models/calEvent");
-const { EventStatus } = require("../models/calConst");
+const { EventStatus } = require("server/model/shorthands");
 //
 const { describe, it, before, after, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");

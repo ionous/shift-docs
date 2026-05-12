@@ -16,7 +16,7 @@ select
   end as eventstatus,
   news as newsflash
 from schedule
-where is_scheduled is not null
+where is_scheduled is not null;
 `;
 
 const seriesEvents = `
@@ -31,7 +31,7 @@ select
   published as changes,
   not published as hidden
 from series
-where published is not null
+where published is not null;
 `;
 
 // the limited set of data needed for the ics feed
@@ -40,7 +40,7 @@ select *
 from daily_events
 left join series_events using (id)
 left join loc_events using (id)
-where changes > 0
+where changes > 0;
 `;
 
 // the pairing of id and image cache ( or image override ) filename.
@@ -57,7 +57,7 @@ select
       -- this won't be evaluated if img_override is true.
       concat_ws( '.', concat_ws('-', image.id, img_version), img_ext ))  
     as image
-from image
+from image;
 `;
 
 // the combined starting and ending location data for every series
@@ -74,7 +74,7 @@ select
 from 
   series
   left join location as star on (series.id = star.id and star.loc_type='start')
-  left join location as fini on (series.id = fini.id and fini.loc_type='finish')
+  left join location as fini on (series.id = fini.id and fini.loc_type='finish');
 `;
 
 // a summary of all events regardless of publication status
@@ -107,7 +107,7 @@ from
   join tag_events using(id) 
   left join daily_events using(id)
   left join image_events using(id)
-  left join web_events using(id)
+  left join web_events using(id);
 `;
 
 // a summary of published events 
@@ -128,7 +128,7 @@ from
   left join daily_events using(id)
   left join image_events using(id)
   left join web_events using(id)
-where not hidden
+where not hidden;
 `;
 
 // all data in one big flat view
@@ -137,11 +137,10 @@ const rawEvents = `
 select * from series
   left join image using(id)
   left join location using(id)
-  left join print using(id)
   left join private using(id)
   left join schedule using(id)
   left join tag using(id)
-  left join web using(id)
+  left join web using(id);
 `;
 
 // certain tags are provided as fields for the existing event endpoints.
@@ -160,7 +159,7 @@ from series
   left join tag as loopride on(loopride.id = series.id and loopride.tag_type = 'loopride')
   left join tag as area on(area.id = series.id and area.tag_type = 'area')
   left join tag as featured on(featured.id = series.id and featured.tag_type = 'featured')
-  left join tag as safety on(safety.id = series.id and safety.tag_type = 'safety')
+  left join tag as safety on(safety.id = series.id and safety.tag_type = 'safety');
  `;
 
 // the event endpoints currently only look for web urls.
@@ -171,7 +170,7 @@ const webEvents = `
   nullif(web_text, '') as webname,
   printable as printweburl
 from web
-where web_type = 'url'
+where web_type = 'url';
 `;
 
 // export:

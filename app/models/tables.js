@@ -1,34 +1,11 @@
-const allViews = require("./allViews");
-const allTriggers = require("./allTriggers");
-const { allTables, extraKeys } = require("./allTables");
+const allViews = require("server/schema/allViews");
+const allTriggers = require("server/schema/allTriggers");
+const { allTables, extraKeys } = require("server/schema/allTables");
 const TableMaker = require('server/util/tableMaker');
 
-// create tables if they dont already exist
 module.exports = {
   // 'image', 'series', etc.
   tableNames: Object.keys(allTables),
-
-  // return a chain of promises
-  createTables(db, options = {drop: false}) {
-    const context = { tables: allTables, views: allViews, triggers: allTriggers };
-    const steps = options.drop ? stages.recreateAll : stages.ensureAll;
-    return steps.reduce((prev, stage) => prev.then(_ => {
-      const ps = stage(db, context);
-      return Promise.all(ps);
-    }), Promise.resolve(true));
-  },
-
-  // return an array of sql statements
-  dumpTableStatements(db) {
-    const context = { tables: allTables, views: allViews, triggers: allTriggers };
-    return stages.recreateAll.flatMap(stage => {
-      const ps = stage(db, context);
-      return ps.map(p => {
-        const res = p.toSQL();
-        return res[0].sql;
-      });
-    });
-  },
 
   // adds new event data to the db, promising the generated seriesId.
   //   eventData is a map of tableName => tableData
@@ -100,6 +77,7 @@ function isEmptyRow(tableName, rowData) {
   const extraKey = extraKeys[tableName];
   return isEmptyData(rowData, ['id', extraKey]);
 }
+
 // helper for isEmptyRow
 // if the named column isnt in the ignore list,
 // and it has a non-zero value; the row has data.
@@ -108,74 +86,3 @@ function isEmptyData(rowData, ignore = []) {
     !ignore.includes(colName) && !!rowData[colName]);
   return first < 0;
 }
-
-// returns the promise of a table
-function createTable(db, name, tableDesc) {
-  return db.query.schema.createTable(name, table => {
-    db.config.debug && console.log(`createTable ${name}:`);
-    const tm = new TableMaker(db, table);
-    for (const colName in tableDesc) {
-      const args = [].concat(tableDesc[colName]); // normalize 1 or more arguments into an array of many
-      const method = args.shift();            // pop the first one, the "make.something()" function
-      method.call(tm, colName, ...args);       // call that function with any remaining arguments
-    }
-  });
-}
-// returns the promise of a new view
-function createView(db, name, raw) {
-  return db.query.schema.createView(name, (view) => {
-    return view.as(db.raw(raw));
-  });
-}
-// holds arrays of staging functions: fn(db, {tables, views, triggers})
-// which must be called in-order, one at a time.
-const stages = {
-  ensureAll: [ensureTables, ensureViews, ensureTriggers],
-  recreateAll: [dropViews, dropTables, createTables, ensureViews,  ensureTriggers]
-}
-
-// a staging function: drops all the tables
-// returns an array of promises
-function dropTables(db, {tables}) {
-  db.config.debug && console.log("dropTables...");
-  const names = Object.keys(tables);
-  return names.map(n => db.query.schema.dropTableIfExists(n));
-}
-// a staging function: drops all known views
-// returns an array of promises
-function dropViews(db, {views}) {
-  db.config.debug && console.log("dropViews...");
-  const names = Object.keys(views);
-  return names.map(n => db.query.schema.dropViewIfExists(n));
-}
-// a staging function: creates tables, errors if they exist
-// returns an array of promises
-function createTables(db, {tables}) {
-  const names = Object.keys(tables);
-  const ps = names.map(n => createTable(db, n, tables[n]));
-  db.config.debug && console.log(`create ${ps.length} tables...`);
-  return ps;
-}
-// a staging function: ensure the tables exist, skipping if they already do.
-// returns an array of promises
-function ensureTables(db, {tables}) {
-  db.config.debug && console.log("ensureTables...");
-  const names = Object.keys(tables);
-  return names.map(n => db.query.schema.hasTable(n).then(exists => {
-    if (!exists) {
-      return createTable(db, n, tables[n]);
-    }
-  }));
-}
-// a staging function: ensure the views exist, recreating if they already do.
-// returns an array of promises
-function ensureViews(db, {views}) {
-  db.config.debug && console.log("ensureViews...");
-  return Object.keys(views).map(name => createView(db, name, views[name]));
-}
-// a staging function: ensure the triggers exist, recreating if they already do.
-function ensureTriggers(db, {triggers}) {
-  db.config.debug && console.log("ensureTriggers...");
-  return Object.values(triggers).map(t => db.query.schema.raw(t));
-}
-

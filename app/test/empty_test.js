@@ -1,5 +1,5 @@
 const tables = require("../models/tables");
-const { LocType } = require("../models/calConst");
+const { LocType } = require("server/model/shorthands");
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 

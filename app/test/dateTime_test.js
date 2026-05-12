@@ -1,4 +1,4 @@
-const dt = require('server/util/dateTime.js');
+const dt = require('server/util/dateTime');
 //
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
