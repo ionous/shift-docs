@@ -28,7 +28,7 @@ async function migrate() {
   buildData(out, events);
 
   // write migration:
-  const mainFile = db.config === "sqlite" ? path.join(`../services/db/tmp/reorg.sql`) : "/dev/stdout";
+  const mainFile = db.config.type === "sqlite" ? path.join(`../services/db/tmp/reorg.sql`) : "/dev/stdout";
 
   // use select statements:
   // INSERT INTO Student (id, name, national_id)
@@ -252,6 +252,11 @@ function scheduleTable(out, evt, days) {
     }
     const scheduled = isScheduled(at);
     assert(scheduled !== undefined);
+    if (evt.modified < evt.created) {
+      const swap = evt.created;
+      evt.created = evt.modified;
+      evt.modified = swap;
+    }
     out.insert('schedule', {
       id: at.id,
       ymd: at.eventdate,
