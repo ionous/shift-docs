@@ -1,6 +1,6 @@
 // DateTime formatting helpers
 //
-// note: the mysql driver reads timestamp, date, and datetime values into javascript Date.
+// note: the mysql driver converts timestamp, date, and datetime values into javascript Date.
 // https://github.com/mysqljs/mysql#type-casting
 
 const dayjs = require("dayjs");
@@ -30,7 +30,7 @@ module.exports = {
   from12HourString, // in: "9:10 PM"
 
   combineDateAndTime, // in: (date, time)
-  getNow,             //
+  getNow,             // current time as dayjs object
   convert,            // in: javascript date
 };
 
@@ -98,8 +98,8 @@ function toTimestamp(d) {
 
 // turn a YYYY-MM-DD string ( ex. 2006-01-02 ) into a dayjs object.
 // returns an "invalid" dayjs object if the string couldn't be parsed.
-// by default, uses strict parsing; often query parsing for ranges will pass false.
-function fromYMDString(str, options = {strict: true}) {
+// fix: change to strict parsing; often query parsing for ranges will pass false.
+function fromYMDString(str, options = {strict: false}) {
   // note: if str was undefined, dayjs would return "now()"
   // so pass null on any empty value to generate a '!.isValid()' dayjs object instead.
   return dayjs(str || null, 'YYYY-MM-DD', options.strict);
@@ -107,15 +107,15 @@ function fromYMDString(str, options = {strict: true}) {
 
 // turn a string formatted as "9:00 PM" into a dayjs object.
 // returns an "invalid" dayjs object if the string couldn't be parsed.
-// by default, uses strict parsing: the client provides AM/PM.
-function from12HourString(str, options = {strict: true}) {
+// fix: change to strict parsing: the client provides AM/PM.
+function from12HourString(str, options = {strict: false}) {
   return dayjs(str || null, 'h:mm A', options.strict);
 }
 
 // turn a string formatted as "19:00:00" into a dayjs object.
 // returns an "invalid" dayjs object if the string couldn't be parsed.
-// by default, uses strict parsing: the db provides this exact format.
-function from24HourString(str, options = {strict: true}) {
+// fix: change to strict parsing: the db provides this exact format.
+function from24HourString(str, options = {strict: false}) {
   return dayjs(str || null, 'HH:mm:ss', options.strict);
 }
 

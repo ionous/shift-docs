@@ -22,13 +22,14 @@
  *    https://localhost:4443/addevent/edit-$event_id-$secret
  *    /site/themes/s2b_hugo_theme/static/js/cal/addevent.js
  */
-const { uploader } = require("../uploader");
 const validator = require('validator');
 const config = require('server/core/config');
 const db = require("server/core/db");
-const dt = require('server/util/dateTime');
-const emailer = require("../emailer");
-const nunjucks = require("../nunjucks");
+const emailer = require("server/support/emailer");
+const nunjucks = require("server/support/nunjucks");
+const { uploader } = require("server/support/uploader");
+const dt = require("server/util/dateTime");
+
 const Reconcile = require("../models/reconcile")
 const { safeParse, validateEvent } = require("../models/calEventValidator");
 

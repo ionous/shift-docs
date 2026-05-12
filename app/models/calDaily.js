@@ -1,5 +1,5 @@
 const config = require('server/core/config');
-const { EventStatus } = require('server/model/shorthands');
+const { EventStatus } = require('server/v2/model/shorthands');
 const dt = require('server/util/dateTime');
 
 const CalDaily = {

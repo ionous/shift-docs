@@ -10,7 +10,7 @@ const path = require("node:path");
 const process = require("node:process");
 const { faker } = require('@faker-js/faker');
 const config = require('server/core/config');
-const { setupTables } = require('server/model/schema');
+const { setupTables } = require('server/v2/model/schema');
 const knex = require('knex');
 
 // ----------------------------------------------------------------

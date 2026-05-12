@@ -17,10 +17,10 @@
  */
 const dayjs = require ('dayjs');
 const wordwrap = require('wordwrapjs');
-const nunjucks = require("../nunjucks");
+const nunjucks = require("server/support/nunjucks");
 const CalEvent = require("../models/calEvent");
 const CalDaily = require("../models/calDaily");
-const { EventsRange } = require("server/model/shorthands");
+const { EventsRange } = require("server/v2/model/shorthands");
 const { summarize } = require("../models/summarize");
 const dt = require('server/util/dateTime');
 const config = require('server/core/config');

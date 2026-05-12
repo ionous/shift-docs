@@ -1,7 +1,7 @@
 const db = require("server/core/db");
-const { TagName, LocType, Showable, WebType } = require("server/model/shorthands");
+const { TagName, LocType, Showable, WebType } = require("server/v2/model/shorthands");
 const dt = require('server/util/dateTime');
-const { setupTables } = require("server/schema");
+const { setupTables } = require("server/v2/schema");
 const { faker } = require('@faker-js/faker');
 
 const testData = require("./testData");

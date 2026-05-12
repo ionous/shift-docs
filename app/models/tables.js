@@ -1,6 +1,6 @@
-const allViews = require("server/schema/allViews");
-const allTriggers = require("server/schema/allTriggers");
-const { allTables, extraKeys } = require("server/schema/allTables");
+const allViews = require("server/v2/schema/allViews");
+const allTriggers = require("server/v2/schema/allTriggers");
+const { allTables, extraKeys } = require("server/v2/schema/allTables");
 const TableMaker = require('server/util/tableMaker');
 
 module.exports = {

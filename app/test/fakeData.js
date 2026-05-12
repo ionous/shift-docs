@@ -3,7 +3,7 @@ const db = require("server/core/db");
 const config = require('server/core/config');
 const dt = require('server/util/dateTime');
 const tables = require("shift-docs/models/tables");
-const { Area, Audience, Distance, LocType, Showable, TagName, WebType } = require('server/model/shorthands');
+const { Area, Audience, Distance, LocType, Showable, TagName, WebType } = require('server/v2/model/shorthands');
 
 // password shared for all fake events
 const password = "supersecret";

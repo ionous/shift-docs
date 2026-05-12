@@ -26,7 +26,7 @@
  */
 const config = require('server/core/config');
 const { fromYMDString, to24HourString, toYMDString } = require('server/util/dateTime');
-const { EventsRange } = require("server/model/shorthands");
+const { EventsRange } = require("server/v2/model/shorthands");
 const { summarize } = require("../models/summarize");
 const validator = require('validator');
 

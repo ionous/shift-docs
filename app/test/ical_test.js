@@ -3,7 +3,7 @@ const db = require("server/core/db");
 const testData = require("./testData");
 const testdb = require("./testdb");
 
-const { EventStatus } = require("server/model/shorthands");
+const { EventStatus } = require("server/v2/model/shorthands");
 //
 const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");

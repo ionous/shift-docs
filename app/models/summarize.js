@@ -2,7 +2,7 @@
 // Generate json summaries of specific events on particular days.
 // -----------------------------------------------------------
 const db = require("server/core/db");
-const { EventStatus } = require("server/model/shorthands");
+const { EventStatus } = require("server/v2/model/shorthands");
 const dt = require('server/util/dateTime');
 const CalEvent = require("./calEvent");
 const CalDaily = require("./calDaily");

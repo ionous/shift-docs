@@ -3,8 +3,8 @@
  */
 const config = require("server/core/config");
 const db = require("server/core/db");
-const { setupTables } = require("server/schema");
-const { initMail } = require('./emailer');
+const { setupTables } = require("server/v2/schema");
+const { initMail } = require("server/support/emailer");
 const app = require('./appEndpoints');
 
 // connect to the db

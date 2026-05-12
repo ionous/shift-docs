@@ -1,6 +1,6 @@
 const dt = require('server/util/dateTime');
 const validator = require('validator');
-const { Area, Audience, Distance, EventStatus, LocType, Showable, TagName, WebType } = require("server/model/shorthands");
+const { Area, Audience, Distance, EventStatus, LocType, Showable, TagName, WebType } = require("server/v2/model/shorthands");
 
 class ErrorCollector {
   constructor() {

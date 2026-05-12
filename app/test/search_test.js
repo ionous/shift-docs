@@ -1,7 +1,7 @@
 const app = require("../appEndpoints");
 const testdb = require("./testdb");
 const testData = require("./testData");
-const { EventSearch } = require("server/model/shorthands");
+const { EventSearch } = require("server/v2/model/shorthands");
 //
 const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
