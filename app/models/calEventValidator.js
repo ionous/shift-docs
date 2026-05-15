@@ -164,7 +164,7 @@ function makeValidator(input, errors) {
      *
      * dates in and out are : YYYY-MM-DD format
      */
-    validateStatus(statusList) {
+    validateStatus(timeNow, statusList) {
       const invalidDateStrings = [];
       const validStatus = [];
       if (statusList) {
@@ -187,6 +187,8 @@ function makeValidator(input, errors) {
                   is_scheduled: scheduled,
                   // the original code stored null for empty news
                   news: news || null,
+                  // for the sake of sqlite, set the changed time manually
+                  changed: timeNow,
                 });
               }
             }
@@ -221,7 +223,7 @@ function validateEvent(input) {
     v.requireTrue('code_of_conduct', "You must agree to the Code of Conduct");
     v.requireTrue('read_comic', "You must have read the Ride Leading Comic");
   }
-
+  const timeNow = dt.toTimestamp();
   const event = {
     // image: ... image data is handled separately (via multi-part form data)
     series: {
@@ -232,6 +234,8 @@ function validateEvent(input) {
       tiny_title: v.nullString('tinytitle', 48), // client caps to 24, but some are longer already
       summary: v.nullString('printdescr', 1024),
       details: v.requireString('details', 'Details missing', 16*1024),
+      // for the sake of sqlite, set this manually.
+      modified: timeNow,
     },
     location: [{
       loc_type: LocType.Start,
@@ -268,7 +272,7 @@ function validateEvent(input) {
   };
   const seriesId = v.zeroInt('id');
   const password = v.nullString('secret');
-  const days = v.validateStatus(input.datestatuses);
+  const days = v.validateStatus(timeNow, input.datestatuses);
   return {
     tgt: {
       seriesId,
