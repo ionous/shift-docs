@@ -1,5 +1,4 @@
 const allViews = require("server/v2/schema/allViews");
-const allTriggers = require("server/v2/schema/allTriggers");
 const { allTables, extraKeys } = require("server/v2/schema/allTables");
 const TableMaker = require('server/util/tableMaker');
 

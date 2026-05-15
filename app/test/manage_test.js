@@ -257,7 +257,6 @@ describe("managing events",  () => {
       // act as if we are a client who just created an event
       // and is posting it back up again, along with the new image.
       return testdb.findSeries(id).then(events => {
-        console.log(`found series ${id} ${events}`);
         const evt = events[0];
         const post = Object.assign({
           secret: testData.secret,

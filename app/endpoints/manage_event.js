@@ -1,5 +1,5 @@
 /**
- *  Manage Event: Updates a new or existing event and its associated times.
+ *  Manage Event: Creates a new event or updates an existing one.
  *  Used by the organizer when they save or edit a ride.
  *  Expects a form/multipart upload with two parts: json and file[].
  *
@@ -99,9 +99,11 @@ async function handleCreate(vals) {
     return Reconcile.newEvent(tx, event, days);
   });
   await sendConfirmationEmail(tgt.seriesId, tgt.password, vals.event);
-  // doesn't return secret; that should only go through the email.
   return {
-    id: tgt.seriesId.toString()
+    id: tgt.seriesId.toString(),
+    // return the change counter, increments each time the data changes.
+    changes: tgt.published,
+    // doesn't return secret; that should only go through the email.
   };
 }
 

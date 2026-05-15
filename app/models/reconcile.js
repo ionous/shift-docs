@@ -12,7 +12,8 @@ module.exports = {
   removeEntireSeries,
 };
 
-// promises an object containing { seriesId, password }
+// after creating a new event and adding all its info
+// promises an object containing { seriesId, password }.
 // tx can be either 'db.query' or a knex transaction.
 function newEvent(tx, eventData, dayData) {
   const password = newSecret();
@@ -25,22 +26,29 @@ function newEvent(tx, eventData, dayData) {
   });
 }
 
-// promises an object containing { seriesId  }
-// after updating all event data and days.
+// after updating all event data and days
+// promises an object containing { seriesId, published }.
 // intended to be used in a a transaction so that if it fails
 // ( ex. due to password mismatch ) nothing gets written to the db.
 function updateEvent(tx, seriesId, secret, eventData, dayData) {
   // tbd: instead of pre-matching the secret, can you throw if on mismatch
-  return tx('private')
+  return tx('update_check')
     .where({id: seriesId, secret})
     .then(rows => {
       if (!rows.length) {
+        // note this can also happen when published is null
+        // ( for revoking rides without deleting their data  )
         throw new Error(`Unknown series ${seriesId} or invalid password.`);
       }
+      // we've read the current published value from the db:
+      // increment it, and store it into the new series data.
+      const nextChange = rows[0].published + 1;
+      eventData.series.published = nextChange;
       return tables.updateEventData(tx, seriesId, eventData).then(_ => {
         return updateDays(tx, seriesId, dayData);
       }).then(_ => ({
-        seriesId
+        seriesId,
+        published: nextChange,
       }));
     });
 }
